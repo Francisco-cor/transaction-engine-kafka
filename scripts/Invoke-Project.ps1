@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('help', 'build', 'test', 'integration-test', 'quality', 'scan', 'up', 'down', 'logs', 'smoke', 'load', 'chaos', 'clean-data')]
+    [ValidateSet('help', 'build', 'test', 'integration-test', 'quality', 'scan', 'up', 'down', 'logs', 'smoke', 'inspect', 'load', 'chaos', 'clean-data')]
     [string]$Command = 'help',
     [switch]$RemoveData
 )
@@ -49,7 +49,9 @@ function Invoke-Smoke {
         @{ Name = 'Schema Registry'; Uri = 'http://localhost:8081/subjects' },
         @{ Name = 'Prometheus'; Uri = 'http://localhost:9090/-/ready' },
         @{ Name = 'Grafana'; Uri = 'http://localhost:3000/api/health' },
-        @{ Name = 'Jaeger'; Uri = 'http://localhost:16686/' }
+        @{ Name = 'Jaeger'; Uri = 'http://localhost:16686/' },
+        @{ Name = 'Transaction service'; Uri = 'http://localhost:8080/actuator/health/readiness' },
+        @{ Name = 'Ledger service'; Uri = 'http://localhost:8082/actuator/health/readiness' }
     )
 
     foreach ($check in $checks) {
@@ -98,6 +100,12 @@ switch ($Command) {
     'smoke' {
         Invoke-Smoke
     }
+    'inspect' {
+        Invoke-Compose -Arguments @(
+            'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'transactions', '-c',
+            "SELECT 'transactions' AS metric, count(*) AS value FROM transaction_schema.transactions UNION ALL SELECT 'committed', count(*) FROM transaction_schema.transactions WHERE status = 'COMMITTED' UNION ALL SELECT 'ledger_entries', count(*) FROM transaction_schema.ledger_entries UNION ALL SELECT 'inbox_duplicates', COALESCE(sum(duplicate_count), 0) FROM transaction_schema.inbox_events UNION ALL SELECT 'outbox_pending', count(*) FROM transaction_schema.outbox_events WHERE status IN ('PENDING', 'CLAIMED', 'FAILED') UNION ALL SELECT 'outbox_published', count(*) FROM transaction_schema.outbox_events WHERE status = 'PUBLISHED' ORDER BY metric"
+        )
+    }
     'clean-data' {
         if (-not $RemoveData) {
             throw 'Limpieza destructiva bloqueada. Repite con -RemoveData para eliminar los volúmenes locales del proyecto.'
@@ -112,6 +120,6 @@ switch ($Command) {
         throw 'El comando chaos queda reservado para la fase 13; todavía no existe una suite de caos verificable.'
     }
     default {
-        Write-Host 'Comandos: build, test, integration-test, quality, scan, up, down, logs, smoke, load, chaos, clean-data'
+        Write-Host 'Comandos: build, test, integration-test, quality, scan, up, down, logs, smoke, inspect, load, chaos, clean-data'
     }
 }

@@ -1,13 +1,12 @@
-package com.example.transactionengine.transaction.persistence;
+package com.example.transactionengine.ledger.persistence;
 
 import java.util.UUID;
 
-public record ClaimedOutboxEvent(
-    UUID outboxId,
+public record OutboxEvent(
+    UUID aggregateId,
     String eventType,
     int schemaVersion,
     String payload,
     String headersJson,
     String partitionKey,
-    int attempts,
     String topic) {}

@@ -8,4 +8,5 @@ public record OutboxEvent(
     int schemaVersion,
     String payload,
     String headersJson,
-    String partitionKey) {}
+    String partitionKey,
+    String topic) {}

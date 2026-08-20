@@ -27,7 +27,7 @@ create_topic() {
 create_topic "transactions.created.v1" 3 "$topic_retention_ms"
 create_topic "transactions.committed.v1" 3 "$topic_retention_ms"
 create_topic "transactions.created.v1.ledger-service.retry" 3 "$topic_retention_ms"
-create_topic "transactions.created.v1.ledger-service.DLT" 1 "$dlt_retention_ms"
+create_topic "transactions.created.v1.ledger-service.DLT" 3 "$dlt_retention_ms"
 
 echo 'Topics creados/verificados:'
 kafka-topics --bootstrap-server "$bootstrap_server" --list | sort

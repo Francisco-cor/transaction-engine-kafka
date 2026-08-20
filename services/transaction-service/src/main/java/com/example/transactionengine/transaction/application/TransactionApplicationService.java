@@ -115,7 +115,8 @@ public class TransactionApplicationService {
                       "producer", "transaction-service",
                       "content_type", "application/json",
                       "account_id", created.accountId())),
-              created.accountId()));
+              created.accountId(),
+              "transactions.created.v1"));
     } catch (JsonProcessingException exception) {
       throw new IllegalStateException("Could not serialize TransactionCreated.v1", exception);
     }

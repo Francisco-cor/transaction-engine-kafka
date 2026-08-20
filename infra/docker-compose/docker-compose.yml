@@ -89,6 +89,46 @@ services:
     command: ["migrate"]
     restart: "no"
 
+  transaction-service:
+    build:
+      context: ../..
+      dockerfile: services/transaction-service/Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-topics:
+        condition: service_completed_successfully
+      postgres-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-transactions}
+      DB_USER: ${POSTGRES_APP_USER:-transaction_app}
+      DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      OUTBOX_PUBLISHER_ENABLED: "true"
+
+  ledger-service:
+    build:
+      context: ../..
+      dockerfile: services/ledger-service/Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-topics:
+        condition: service_completed_successfully
+      postgres-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8082:8082"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-transactions}
+      DB_USER: ${POSTGRES_APP_USER:-transaction_app}
+      DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      LEDGER_OUTBOX_PUBLISHER_ENABLED: "true"
+
   redis:
     image: redis:7.4-alpine
     hostname: redis

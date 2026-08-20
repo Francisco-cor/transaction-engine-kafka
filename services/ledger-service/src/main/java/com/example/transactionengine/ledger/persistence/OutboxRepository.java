@@ -1,4 +1,4 @@
-package com.example.transactionengine.transaction.persistence;
+package com.example.transactionengine.ledger.persistence;
 
 import java.util.List;
 import java.util.Map;
@@ -36,8 +36,7 @@ public class OutboxRepository {
             .addValue("topic", event.topic()));
   }
 
-  public List<ClaimedOutboxEvent> claim(
-      int batchSize, String owner, int leaseSeconds, String topic) {
+  public List<ClaimedOutboxEvent> claim(int batchSize, String owner, int leaseSeconds, String topic) {
     return jdbc.query(
         """
         WITH candidates AS (

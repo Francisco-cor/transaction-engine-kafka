@@ -1,7 +1,7 @@
-package com.example.transactionengine.transaction.messaging;
+package com.example.transactionengine.ledger.messaging;
 
-import com.example.transactionengine.transaction.persistence.ClaimedOutboxEvent;
-import com.example.transactionengine.transaction.persistence.OutboxRepository;
+import com.example.transactionengine.ledger.persistence.ClaimedOutboxEvent;
+import com.example.transactionengine.ledger.persistence.OutboxRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
@@ -18,10 +18,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(name = "outbox.publisher.enabled", havingValue = "true", matchIfMissing = true)
-public class OutboxPublisher {
+@ConditionalOnProperty(
+    name = "ledger.outbox.publisher-enabled", havingValue = "true", matchIfMissing = true)
+public class LedgerOutboxPublisher {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OutboxPublisher.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LedgerOutboxPublisher.class);
   private static final TypeReference<Map<String, String>> HEADERS_TYPE = new TypeReference<>() {};
 
   private final OutboxRepository outbox;
@@ -32,17 +33,17 @@ public class OutboxPublisher {
   private final int leaseSeconds;
   private final long baseBackoffSeconds;
   private final long maxBackoffSeconds;
-  private final String owner = "transaction-service-" + UUID.randomUUID();
+  private final String owner = "ledger-service-" + UUID.randomUUID();
 
-  public OutboxPublisher(
+  public LedgerOutboxPublisher(
       OutboxRepository outbox,
       KafkaTemplate<String, String> kafkaTemplate,
       ObjectMapper objectMapper,
-      @Value("${transaction.events.topic:transactions.created.v1}") String topic,
-      @Value("${outbox.publisher.batch-size:50}") int batchSize,
-      @Value("${outbox.publisher.lease-seconds:30}") int leaseSeconds,
-      @Value("${outbox.publisher.base-backoff-seconds:1}") long baseBackoffSeconds,
-      @Value("${outbox.publisher.max-backoff-seconds:60}") long maxBackoffSeconds) {
+      @Value("${ledger.outcome-topic:transactions.committed.v1}") String topic,
+      @Value("${ledger.outbox.batch-size:50}") int batchSize,
+      @Value("${ledger.outbox.lease-seconds:30}") int leaseSeconds,
+      @Value("${ledger.outbox.base-backoff-seconds:1}") long baseBackoffSeconds,
+      @Value("${ledger.outbox.max-backoff-seconds:60}") long maxBackoffSeconds) {
     this.outbox = outbox;
     this.kafkaTemplate = kafkaTemplate;
     this.objectMapper = objectMapper;
@@ -53,23 +54,21 @@ public class OutboxPublisher {
     this.maxBackoffSeconds = maxBackoffSeconds;
   }
 
-  @Scheduled(fixedDelayString = "${outbox.publisher.poll-delay-ms:1000}")
+  @Scheduled(fixedDelayString = "${ledger.outbox.poll-delay-ms:1000}")
   public void publishDueEvents() {
     try {
       outbox.claim(batchSize, owner, leaseSeconds, topic).forEach(this::publish);
     } catch (RuntimeException exception) {
-      LOGGER.warn("Outbox claim failed; the next poll will retry", exception);
+      LOGGER.warn("Ledger outbox claim failed; the next poll will retry", exception);
     }
   }
 
   private void publish(ClaimedOutboxEvent event) {
     try {
       var headers = objectMapper.readValue(event.headersJson(), HEADERS_TYPE);
-      var record =
-          new ProducerRecord<String, String>(event.topic(), event.partitionKey(), event.payload());
+      var record = new ProducerRecord<String, String>(event.topic(), event.partitionKey(), event.payload());
       headers.forEach(
           (name, value) -> record.headers().add(name, value.getBytes(StandardCharsets.UTF_8)));
-
       kafkaTemplate
           .send(record)
           .whenComplete(
@@ -80,12 +79,12 @@ public class OutboxPublisher {
                   var cause = unwrap(throwable);
                   outbox.markFailed(
                       event.outboxId(), owner, nextBackoff(event.attempts()), summarize(cause));
-                  LOGGER.warn("Outbox event {} failed to publish", event.outboxId(), cause);
+                  LOGGER.warn("Ledger outbox event {} failed to publish", event.outboxId(), cause);
                 }
               });
     } catch (Exception exception) {
       outbox.markFailed(event.outboxId(), owner, nextBackoff(event.attempts()), summarize(exception));
-      LOGGER.warn("Outbox event {} could not be prepared", event.outboxId(), exception);
+      LOGGER.warn("Ledger outbox event {} could not be prepared", event.outboxId(), exception);
     }
   }
 

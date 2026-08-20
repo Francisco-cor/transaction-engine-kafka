@@ -31,7 +31,8 @@ class OutboxPublisherTest {
   void marksEventPublishedOnlyAfterKafkaFutureSucceeds() {
     var event = event();
     var future = new CompletableFuture<SendResult<String, String>>();
-    when(outbox.claim(eq(10), anyString(), eq(30))).thenReturn(List.of(event));
+    when(outbox.claim(eq(10), anyString(), eq(30), eq("transactions.created.v1")))
+        .thenReturn(List.of(event));
     when(kafkaTemplate.send(any(ProducerRecord.class))).thenReturn(future);
     var publisher = publisher();
 
@@ -47,7 +48,8 @@ class OutboxPublisherTest {
   void marksEventFailedWithBackoffWhenKafkaFutureFails() {
     var event = event();
     var future = new CompletableFuture<SendResult<String, String>>();
-    when(outbox.claim(eq(10), anyString(), eq(30))).thenReturn(List.of(event));
+    when(outbox.claim(eq(10), anyString(), eq(30), eq("transactions.created.v1")))
+        .thenReturn(List.of(event));
     when(kafkaTemplate.send(any(ProducerRecord.class))).thenReturn(future);
     var publisher = publisher();
 
@@ -69,6 +71,7 @@ class OutboxPublisherTest {
         "{\"transactionId\":\"abc\"}",
         "{\"event_type\":\"TransactionCreated\",\"schema_version\":\"1\"}",
         "demo-acc-001",
-        0);
+        0,
+        "transactions.created.v1");
   }
 }

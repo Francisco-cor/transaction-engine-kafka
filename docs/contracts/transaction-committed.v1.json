@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/contracts/transactions.committed.v1.json",
+  "title": "TransactionCommitted.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "eventType", "schemaVersion", "occurredAt", "transactionId", "accountId", "amount", "currency", "type", "balanceBefore", "balanceAfter", "metadata"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "TransactionCommitted" },
+    "schemaVersion": { "const": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "transactionId": { "type": "string", "format": "uuid" },
+    "accountId": { "type": "string", "minLength": 1 },
+    "amount": { "type": "number", "exclusiveMinimum": 0 },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "type": { "enum": ["DEBIT", "CREDIT"] },
+    "balanceBefore": { "type": "number", "minimum": 0 },
+    "balanceAfter": { "type": "number", "minimum": 0 },
+    "metadata": { "type": "object" }
+  }
+}

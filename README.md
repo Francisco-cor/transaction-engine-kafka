@@ -1,6 +1,6 @@
 # Financial Transaction & Reconciliation Platform
 
-Base incremental para una plataforma de movimientos financieros con PostgreSQL, Kafka y procesamiento asíncrono. Este repositorio se encuentra en las fases 0 y 1: decisiones fundacionales e infraestructura local reproducible.
+Base incremental para una plataforma de movimientos financieros con PostgreSQL, Kafka y procesamiento asíncrono. Este repositorio cubre las fases 0 a 3: fundación, infraestructura local, ingesta/outbox y ledger idempotente.
 
 ## Requisitos
 
@@ -60,6 +60,8 @@ El endpoint devuelve `202 Accepted`, persiste `transactions` y `outbox_events` e
 | Jaeger | 16686 | UI de trazas; OTLP en 4317/4318 |
 | Prometheus | 9090 | Métricas |
 | Grafana | 3000 | Dashboards locales |
+| transaction-service | 8080 | API de ingesta |
+| ledger-service | 8082 | Consumer y health/readiness |
 
 Credenciales de desarrollo por defecto: PostgreSQL admin `postgres/postgres_dev`, aplicación `transaction_app/transaction_app_dev`, migraciones `transaction_migrator/transaction_migrator_dev`, Grafana `admin/admin_dev`. Son valores exclusivos para el entorno local y se pueden cambiar en `infra/docker-compose/.env`.
 
@@ -71,6 +73,7 @@ powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command integration-te
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command quality
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command scan
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command logs
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command inspect
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command down
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command clean-data -RemoveData
 ```
@@ -80,11 +83,12 @@ powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command clean-data -Re
 ## Estructura
 
 - `libs/event-contracts`: tipos pequeños y contratos versionados.
-- `services/transaction-service`: primer servicio Spring Boot placeholder.
+- `services/transaction-service`: API de ingesta, idempotencia y transactional outbox.
+- `services/ledger-service`: consumer idempotente, locking de cuenta y outbox de resultados.
 - `infra/docker-compose`: Kafka KRaft, PostgreSQL, Redis, Schema Registry y observabilidad.
 - `infra/postgres/migrations`: migraciones Flyway iniciales.
 - `docs/adr`: decisiones arquitectónicas.
 - `docs/contracts`: fixtures y schemas de eventos.
 - `docs/operations`: SLOs, límites y retención de datos de demo.
 
-El roadmap y sus criterios de salida están en [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+El roadmap de implementación se mantiene localmente en `IMPLEMENTATION_PLAN.md` y se excluye del repositorio público.

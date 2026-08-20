@@ -1,4 +1,4 @@
-package com.example.transactionengine.transaction.persistence;
+package com.example.transactionengine.ledger.persistence;
 
 import java.util.UUID;
 
