@@ -1,0 +1,78 @@
+spring:
+  application:
+    name: fraud-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/transactions}
+    username: ${DB_USER:transaction_app}
+    password: ${DB_PASSWORD:transaction_app_dev}
+    hikari:
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:3000}
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+  data:
+    redis:
+      url: ${REDIS_URL:redis://:redis_dev@localhost:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${FRAUD_CONSUMER_GROUP:fraud-service}
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        isolation.level: read_committed
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+        acks: all
+        compression.type: zstd
+
+server:
+  port: ${SERVER_PORT:8083}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+fraud:
+  input-topic: ${FRAUD_INPUT_TOPIC:transactions.created.v1}
+  decision-topic: ${FRAUD_DECISION_TOPIC:transactions.fraud-decisions.v1}
+  consumer:
+    retry-interval-ms: ${FRAUD_RETRY_INTERVAL_MS:1000}
+    max-attempts: ${FRAUD_MAX_ATTEMPTS:3}
+  cache:
+    ttl-seconds: ${FRAUD_CACHE_TTL_SECONDS:300}
+  rules:
+    amount-review-threshold: ${FRAUD_AMOUNT_REVIEW_THRESHOLD:5000.00}
+    frequency-window-seconds: ${FRAUD_FREQUENCY_WINDOW_SECONDS:300}
+    frequency-max-transactions: ${FRAUD_FREQUENCY_MAX_TRANSACTIONS:3}
+    suspicious-account-pattern: ${FRAUD_SUSPICIOUS_ACCOUNT_PATTERN:^fraud-.*}
+    transaction-pattern-modulo: ${FRAUD_TRANSACTION_PATTERN_MODULO:0}
+    transaction-pattern-remainder: ${FRAUD_TRANSACTION_PATTERN_REMAINDER:0}
+  outbox:
+    publisher-enabled: ${FRAUD_OUTBOX_PUBLISHER_ENABLED:true}
+    poll-delay-ms: ${FRAUD_OUTBOX_POLL_DELAY_MS:1000}
+    batch-size: ${FRAUD_OUTBOX_BATCH_SIZE:50}
+    lease-seconds: ${FRAUD_OUTBOX_LEASE_SECONDS:30}
+    base-backoff-seconds: ${FRAUD_OUTBOX_BASE_BACKOFF_SECONDS:1}
+    max-backoff-seconds: ${FRAUD_OUTBOX_MAX_BACKOFF_SECONDS:60}
+
+info:
+  app:
+    name: fraud-service
+    version: ${project.version:dev}

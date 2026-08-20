@@ -8,6 +8,7 @@
     <groupId>com.example.transactionengine</groupId>
     <artifactId>transaction-engine-kafka</artifactId>
     <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
   </parent>
 
   <artifactId>event-contracts</artifactId>

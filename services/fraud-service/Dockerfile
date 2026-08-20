@@ -6,14 +6,14 @@ COPY services/transaction-service/pom.xml services/transaction-service/pom.xml
 COPY services/ledger-service/pom.xml services/ledger-service/pom.xml
 COPY services/fraud-service/pom.xml services/fraud-service/pom.xml
 COPY services/reconciliation-service/pom.xml services/reconciliation-service/pom.xml
-RUN mvn -B -ntp -pl services/transaction-service -am dependency:go-offline
+RUN mvn -B -ntp -pl services/fraud-service -am dependency:go-offline
 COPY libs/event-contracts/src libs/event-contracts/src
-COPY services/transaction-service/src services/transaction-service/src
-RUN mvn -B -ntp -pl services/transaction-service -am package -DskipTests
+COPY services/fraud-service/src services/fraud-service/src
+RUN mvn -B -ntp -pl services/fraud-service -am package -DskipTests
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /workspace/services/transaction-service/target/transaction-service-0.1.0-SNAPSHOT.jar app.jar
+COPY --from=build /workspace/services/fraud-service/target/fraud-service-0.1.0-SNAPSHOT.jar app.jar
 USER 10001
-EXPOSE 8080
+EXPOSE 8083
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

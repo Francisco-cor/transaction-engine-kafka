@@ -1,0 +1,21 @@
+package com.example.transactionengine.reconciliation;
+
+import java.time.Clock;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
+@EnableScheduling
+@SpringBootApplication
+public class ReconciliationServiceApplication {
+
+  public static void main(String[] args) {
+    SpringApplication.run(ReconciliationServiceApplication.class, args);
+  }
+
+  @Bean
+  Clock utcClock() {
+    return Clock.systemUTC();
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/contracts/transactions.fraud-decisions.v1.json",
+  "title": "FraudDecision.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "schemaVersion",
+    "occurredAt",
+    "transactionId",
+    "accountId",
+    "amount",
+    "currency",
+    "decision",
+    "reasonCode",
+    "ruleCode",
+    "riskScore",
+    "metadata"
+  ],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "FraudDecision" },
+    "schemaVersion": { "const": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "transactionId": { "type": "string", "format": "uuid" },
+    "accountId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "amount": { "type": "number", "exclusiveMinimum": 0 },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "decision": { "enum": ["PASS", "REVIEW", "BLOCK"] },
+    "reasonCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "ruleCode": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "riskScore": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "metadata": { "type": "object", "additionalProperties": true }
+  }
+}

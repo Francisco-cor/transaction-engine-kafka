@@ -15,6 +15,8 @@
     <module>libs/event-contracts</module>
     <module>services/transaction-service</module>
     <module>services/ledger-service</module>
+    <module>services/fraud-service</module>
+    <module>services/reconciliation-service</module>
   </modules>
 
   <properties>

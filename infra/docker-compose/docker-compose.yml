@@ -51,7 +51,7 @@ services:
     image: postgres:16.4-alpine
     hostname: postgres
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-transactions}
       POSTGRES_USER: ${POSTGRES_ADMIN_USER:-postgres}
@@ -83,7 +83,7 @@ services:
       FLYWAY_DEFAULT_SCHEMA: transaction_schema
       FLYWAY_LOCATIONS: filesystem:/flyway/sql
       FLYWAY_CONNECT_RETRIES: 30
-      FLYWAY_PLACEHOLDERS_APP_USER: ${POSTGRES_APP_USER:-transaction_app}
+      FLYWAY_PLACEHOLDERS_APPUSER: ${POSTGRES_APP_USER:-transaction_app}
     volumes:
       - ../postgres/migrations:/flyway/sql:ro
     command: ["migrate"]
@@ -128,6 +128,43 @@ services:
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       LEDGER_OUTBOX_PUBLISHER_ENABLED: "true"
+
+  fraud-service:
+    build:
+      context: ../..
+      dockerfile: services/fraud-service/Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-topics:
+        condition: service_completed_successfully
+      postgres-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-transactions}
+      DB_USER: ${POSTGRES_APP_USER:-transaction_app}
+      DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev}@redis:6379
+      FRAUD_OUTBOX_PUBLISHER_ENABLED: "true"
+
+  reconciliation-service:
+    build:
+      context: ../..
+      dockerfile: services/reconciliation-service/Dockerfile
+    depends_on:
+      postgres-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8084:8084"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-transactions}
+      DB_USER: ${POSTGRES_APP_USER:-transaction_app}
+      DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
 
   redis:
     image: redis:7.4-alpine

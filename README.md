@@ -1,6 +1,6 @@
 # Financial Transaction & Reconciliation Platform
 
-Base incremental para una plataforma de movimientos financieros con PostgreSQL, Kafka y procesamiento asíncrono. Este repositorio cubre las fases 0 a 3: fundación, infraestructura local, ingesta/outbox y ledger idempotente.
+Base incremental para una plataforma de movimientos financieros con PostgreSQL, Kafka y procesamiento asíncrono. Este repositorio cubre las fases 0 a 4: fundación, infraestructura local, ingesta/outbox y ledger idempotente.
 
 ## Requisitos
 
@@ -54,7 +54,7 @@ El endpoint devuelve `202 Accepted`, persiste `transactions` y `outbox_events` e
 | Servicio | Puerto | Uso |
 |---|---:|---|
 | Kafka | 9092 | Broker accesible desde el host |
-| PostgreSQL | 5432 | Base `transactions` |
+| PostgreSQL | 5432 (o `$env:POSTGRES_HOST_PORT=5433`) | Base `transactions` |
 | Redis | 6379 | Cache/estado auxiliar |
 | Schema Registry | 8081 | Contratos Kafka |
 | Jaeger | 16686 | UI de trazas; OTLP en 4317/4318 |
@@ -62,8 +62,26 @@ El endpoint devuelve `202 Accepted`, persiste `transactions` y `outbox_events` e
 | Grafana | 3000 | Dashboards locales |
 | transaction-service | 8080 | API de ingesta |
 | ledger-service | 8082 | Consumer y health/readiness |
+| fraud-service | 8083 | Reglas deterministas, decisiones idempotentes y outbox |
+| reconciliation-service | 8084 | Worker, clasificación y replay controlado |
 
 Credenciales de desarrollo por defecto: PostgreSQL admin `postgres/postgres_dev`, aplicación `transaction_app/transaction_app_dev`, migraciones `transaction_migrator/transaction_migrator_dev`, Grafana `admin/admin_dev`. Son valores exclusivos para el entorno local y se pueden cambiar en `infra/docker-compose/.env`.
+
+## Fase 4: fraude y reconciliación
+
+El flujo local consume `transactions.created.v1` en grupos independientes. `fraud-service` persiste una decisión única por `transactionId`, publica `transactions.fraud-decisions.v1` y usa Redis únicamente como cache auxiliar con fallback a PostgreSQL. `reconciliation-service` compara la transacción, el evento creado, el ledger, la decisión de fraude y el evento de resultado; guarda `MATCHED`, `MISSING`, `DUPLICATE`, `MISMATCH` o `PENDING`.
+
+```powershell
+# Consultar el resultado de reconciliación
+Invoke-RestMethod http://localhost:8084/reconciliation/{transactionId}
+
+# Solicitar replay administrativo de un caso pendiente
+Invoke-RestMethod -Method Post `
+  -Uri http://localhost:8084/reconciliation/{transactionId}/replay `
+  -Headers @{ 'X-Replay-Reason' = 'manual-verification' }
+```
+
+Si el puerto 5432 ya está ocupado por otro PostgreSQL local, levanta Compose con `$env:POSTGRES_HOST_PORT='5433'`; el valor por defecto continúa siendo 5432.
 
 ## Comandos
 
@@ -85,6 +103,8 @@ powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command clean-data -Re
 - `libs/event-contracts`: tipos pequeños y contratos versionados.
 - `services/transaction-service`: API de ingesta, idempotencia y transactional outbox.
 - `services/ledger-service`: consumer idempotente, locking de cuenta y outbox de resultados.
+- `services/fraud-service`: reglas deterministas, Redis auxiliar y decisiones idempotentes.
+- `services/reconciliation-service`: worker de consistencia y replay controlado.
 - `infra/docker-compose`: Kafka KRaft, PostgreSQL, Redis, Schema Registry y observabilidad.
 - `infra/postgres/migrations`: migraciones Flyway iniciales.
 - `docs/adr`: decisiones arquitectónicas.

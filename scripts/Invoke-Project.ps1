@@ -51,7 +51,9 @@ function Invoke-Smoke {
         @{ Name = 'Grafana'; Uri = 'http://localhost:3000/api/health' },
         @{ Name = 'Jaeger'; Uri = 'http://localhost:16686/' },
         @{ Name = 'Transaction service'; Uri = 'http://localhost:8080/actuator/health/readiness' },
-        @{ Name = 'Ledger service'; Uri = 'http://localhost:8082/actuator/health/readiness' }
+        @{ Name = 'Ledger service'; Uri = 'http://localhost:8082/actuator/health/readiness' },
+        @{ Name = 'Fraud service'; Uri = 'http://localhost:8083/actuator/health/readiness' },
+        @{ Name = 'Reconciliation service'; Uri = 'http://localhost:8084/actuator/health/readiness' }
     )
 
     foreach ($check in $checks) {
@@ -103,7 +105,7 @@ switch ($Command) {
     'inspect' {
         Invoke-Compose -Arguments @(
             'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'transactions', '-c',
-            "SELECT 'transactions' AS metric, count(*) AS value FROM transaction_schema.transactions UNION ALL SELECT 'committed', count(*) FROM transaction_schema.transactions WHERE status = 'COMMITTED' UNION ALL SELECT 'ledger_entries', count(*) FROM transaction_schema.ledger_entries UNION ALL SELECT 'inbox_duplicates', COALESCE(sum(duplicate_count), 0) FROM transaction_schema.inbox_events UNION ALL SELECT 'outbox_pending', count(*) FROM transaction_schema.outbox_events WHERE status IN ('PENDING', 'CLAIMED', 'FAILED') UNION ALL SELECT 'outbox_published', count(*) FROM transaction_schema.outbox_events WHERE status = 'PUBLISHED' ORDER BY metric"
+            "SELECT 'transactions' AS metric, count(*) AS value FROM transaction_schema.transactions UNION ALL SELECT 'committed', count(*) FROM transaction_schema.transactions WHERE status = 'COMMITTED' UNION ALL SELECT 'rejected', count(*) FROM transaction_schema.transactions WHERE status = 'REJECTED' UNION ALL SELECT 'ledger_entries', count(*) FROM transaction_schema.ledger_entries UNION ALL SELECT 'inbox_duplicates', COALESCE(sum(duplicate_count), 0) FROM transaction_schema.inbox_events UNION ALL SELECT 'outbox_pending', count(*) FROM transaction_schema.outbox_events WHERE status IN ('PENDING', 'CLAIMED', 'FAILED') UNION ALL SELECT 'outbox_published', count(*) FROM transaction_schema.outbox_events WHERE status = 'PUBLISHED' UNION ALL SELECT 'fraud_decisions', count(*) FROM transaction_schema.fraud_decisions UNION ALL SELECT 'fraud_pass', count(*) FROM transaction_schema.fraud_decisions WHERE decision = 'PASS' UNION ALL SELECT 'fraud_review', count(*) FROM transaction_schema.fraud_decisions WHERE decision = 'REVIEW' UNION ALL SELECT 'fraud_block', count(*) FROM transaction_schema.fraud_decisions WHERE decision = 'BLOCK' UNION ALL SELECT 'reconciliation_matched', count(*) FROM transaction_schema.reconciliation_results WHERE status = 'MATCHED' UNION ALL SELECT 'reconciliation_missing', count(*) FROM transaction_schema.reconciliation_results WHERE status = 'MISSING' UNION ALL SELECT 'reconciliation_duplicate', count(*) FROM transaction_schema.reconciliation_results WHERE status = 'DUPLICATE' UNION ALL SELECT 'reconciliation_mismatch', count(*) FROM transaction_schema.reconciliation_results WHERE status = 'MISMATCH' UNION ALL SELECT 'reconciliation_pending', count(*) FROM transaction_schema.reconciliation_results WHERE status = 'PENDING' ORDER BY metric"
         )
     }
     'clean-data' {
