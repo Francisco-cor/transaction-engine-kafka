@@ -1,0 +1,17 @@
+.idea/
+.vscode/
+*.iml
+
+target/
+.mvn/timing.properties
+
+# Local planning artifact; keep the implementation roadmap out of the public repo.
+/IMPLEMENTATION_PLAN.md
+
+infra/docker-compose/.env
+docs/evidence/generated/
+reports/
+
+*.log
+hs_err_pid*
+

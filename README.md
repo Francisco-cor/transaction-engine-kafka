@@ -1,0 +1,69 @@
+# Financial Transaction & Reconciliation Platform
+
+Base incremental para una plataforma de movimientos financieros con PostgreSQL, Kafka y procesamiento asíncrono. Este repositorio se encuentra en las fases 0 y 1: decisiones fundacionales e infraestructura local reproducible.
+
+## Requisitos
+
+- Java 21
+- Maven 3.9+
+- Docker Desktop con Docker Compose v2
+- PowerShell 7 recomendado para los comandos auxiliares
+
+## Inicio rápido
+
+Desde la raíz del repositorio:
+
+```powershell
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command build
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command up
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command smoke
+```
+
+También se puede usar `make build`, `make up`, `make smoke`, `make down` y `make logs` en entornos con Make disponible.
+
+La aplicación placeholder se ejecuta fuera de Compose con:
+
+```powershell
+mvn -pl services/transaction-service spring-boot:run
+```
+
+Endpoint disponible: `GET http://localhost:8080/api/v1/placeholder`.
+
+## Servicios locales
+
+| Servicio | Puerto | Uso |
+|---|---:|---|
+| Kafka | 9092 | Broker accesible desde el host |
+| PostgreSQL | 5432 | Base `transactions` |
+| Redis | 6379 | Cache/estado auxiliar |
+| Schema Registry | 8081 | Contratos Kafka |
+| Jaeger | 16686 | UI de trazas; OTLP en 4317/4318 |
+| Prometheus | 9090 | Métricas |
+| Grafana | 3000 | Dashboards locales |
+
+Credenciales de desarrollo por defecto: PostgreSQL admin `postgres/postgres_dev`, aplicación `transaction_app/transaction_app_dev`, migraciones `transaction_migrator/transaction_migrator_dev`, Grafana `admin/admin_dev`. Son valores exclusivos para el entorno local y se pueden cambiar en `infra/docker-compose/.env`.
+
+## Comandos
+
+```powershell
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command test
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command quality
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command scan
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command logs
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command down
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command clean-data -RemoveData
+```
+
+`clean-data` requiere el switch explícito `-RemoveData` y elimina únicamente los volúmenes nombrados de este Compose. `load` y `chaos` están reservados para las fases posteriores y fallan de forma explícita mientras no exista su implementación.
+
+## Estructura
+
+- `libs/event-contracts`: tipos pequeños y contratos versionados.
+- `services/transaction-service`: primer servicio Spring Boot placeholder.
+- `infra/docker-compose`: Kafka KRaft, PostgreSQL, Redis, Schema Registry y observabilidad.
+- `infra/postgres/migrations`: migraciones Flyway iniciales.
+- `docs/adr`: decisiones arquitectónicas.
+- `docs/contracts`: fixtures y schemas de eventos.
+- `docs/operations`: SLOs, límites y retención de datos de demo.
+
+El roadmap y sus criterios de salida están en [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
