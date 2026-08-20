@@ -1,12 +1,15 @@
 POWERSHELL ?= powershell
 
-.PHONY: build test quality scan up down logs smoke load chaos clean-data
+.PHONY: build test integration-test quality scan up down logs smoke load chaos clean-data
 
 build:
 	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command build
 
 test:
 	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command test
+
+integration-test:
+	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command integration-test
 
 quality:
 	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command quality

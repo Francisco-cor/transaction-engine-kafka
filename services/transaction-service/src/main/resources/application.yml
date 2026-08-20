@@ -1,6 +1,25 @@
 spring:
   application:
     name: transaction-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/transactions}
+    username: ${DB_USER:transaction_app}
+    password: ${DB_PASSWORD:transaction_app_dev}
+    hikari:
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:3000}
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    locations: filesystem:${FLYWAY_MIGRATIONS_PATH:infra/postgres/migrations}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+        acks: all
+        compression.type: zstd
 
 server:
   port: ${SERVER_PORT:8080}
@@ -9,11 +28,32 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
         enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+transaction:
+  events:
+    topic: ${TRANSACTION_CREATED_TOPIC:transactions.created.v1}
+
+outbox:
+  publisher:
+    enabled: ${OUTBOX_PUBLISHER_ENABLED:true}
+    poll-delay-ms: ${OUTBOX_POLL_DELAY_MS:1000}
+    batch-size: ${OUTBOX_BATCH_SIZE:50}
+    lease-seconds: ${OUTBOX_LEASE_SECONDS:30}
+    base-backoff-seconds: ${OUTBOX_BASE_BACKOFF_SECONDS:1}
+    max-backoff-seconds: ${OUTBOX_MAX_BACKOFF_SECONDS:60}
 
 info:
   app:

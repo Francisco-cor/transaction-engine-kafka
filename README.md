@@ -29,6 +29,26 @@ mvn -pl services/transaction-service spring-boot:run
 
 Endpoint disponible: `GET http://localhost:8080/api/v1/placeholder`.
 
+## Fase 2: API y outbox
+
+Con la infraestructura levantada, inicia el servicio desde la raíz:
+
+```powershell
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command up
+mvn -pl services/transaction-service spring-boot:run
+```
+
+Crear una transacción requiere `Idempotency-Key`; `X-Tenant-Id` identifica el scope de idempotencia y por defecto vale `demo` para desarrollo:
+
+```powershell
+$body = '{"accountId":"demo-acc-001","amount":10.00,"type":"DEBIT","currency":"MXN"}'
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/transactions `
+  -Headers @{ 'Idempotency-Key' = 'demo-key-001'; 'X-Tenant-Id' = 'demo' } `
+  -ContentType 'application/json' -Body $body
+```
+
+El endpoint devuelve `202 Accepted`, persiste `transactions` y `outbox_events` en una única transacción y el publisher publica `transactions.created.v1` con key `accountId`. Repetir la misma key y body devuelve el mismo `transactionId`; cambiar el body devuelve `409 Conflict`. La consulta es `GET http://localhost:8080/transactions/{transactionId}`.
+
 ## Servicios locales
 
 | Servicio | Puerto | Uso |
@@ -47,6 +67,7 @@ Credenciales de desarrollo por defecto: PostgreSQL admin `postgres/postgres_dev`
 
 ```powershell
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command test
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command integration-test
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command quality
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command scan
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command logs

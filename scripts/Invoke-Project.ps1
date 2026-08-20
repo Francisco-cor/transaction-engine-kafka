@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('help', 'build', 'test', 'quality', 'scan', 'up', 'down', 'logs', 'smoke', 'load', 'chaos', 'clean-data')]
+    [ValidateSet('help', 'build', 'test', 'integration-test', 'quality', 'scan', 'up', 'down', 'logs', 'smoke', 'load', 'chaos', 'clean-data')]
     [string]$Command = 'help',
     [switch]$RemoveData
 )
@@ -77,6 +77,9 @@ switch ($Command) {
     'test' {
         Invoke-Maven -Arguments @('-B', '-ntp', 'test')
     }
+    'integration-test' {
+        Invoke-Maven -Arguments @('-B', '-ntp', '-Pintegration-tests', 'verify')
+    }
     'quality' {
         Invoke-Maven -Arguments @('-B', '-ntp', 'verify')
     }
@@ -109,6 +112,6 @@ switch ($Command) {
         throw 'El comando chaos queda reservado para la fase 13; todavía no existe una suite de caos verificable.'
     }
     default {
-        Write-Host 'Comandos: build, test, quality, scan, up, down, logs, smoke, load, chaos, clean-data'
+        Write-Host 'Comandos: build, test, integration-test, quality, scan, up, down, logs, smoke, load, chaos, clean-data'
     }
 }
