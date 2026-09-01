@@ -1,0 +1,33 @@
+{
+  "name": "db-down",
+  "description": "Simulate PostgreSQL temporary outage via docker pause 15s — consumers must pause, no offset loss, drain backlog on recovery",
+  "seed": 42,
+  "rate": 50,
+  "duration": 120,
+  "kill_every": 0,
+  "chaos": {
+    "toxiproxy": {
+      "enabled": false
+    },
+    "db_down": {
+      "enabled": true,
+      "down_after_seconds": 30,
+      "duration_seconds": 15,
+      "command": "docker compose -f infra/docker-compose/docker-compose.yml pause postgres && sleep 15 && docker compose -f infra/docker-compose/docker-compose.yml unpause postgres",
+      "alt_command": "docker pause transaction-engine-kafka-postgres-1 && sleep 15 && docker unpause transaction-engine-kafka-postgres-1",
+      "expected": {
+        "consumers_pause": true,
+        "offsets_not_lost": true,
+        "backlog_drains": true,
+        "recovery_seconds_lt": 14,
+        "circuit_breaker_opens": true
+      }
+    }
+  },
+  "invariants": [
+    "no_ledger_missing_after_recovery",
+    "outbox_backlog_zero_after_stable",
+    "circuit_breaker_recovers"
+  ],
+  "verify": "powershell -File scripts/Invoke-Project.ps1 -Command verify-invariants; curl -s http://localhost:8082/actuator/health/readiness | jq .; curl -s http://localhost:9090/api/v1/query?query=up | jq ."
+}

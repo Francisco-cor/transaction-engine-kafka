@@ -1,0 +1,36 @@
+{
+  "name": "poison",
+  "description": "Inject poison message with invalid payload (empty amount, bad JSON) — must go to DLT without blocking consumer",
+  "seed": 42,
+  "rate": 50,
+  "duration": 60,
+  "kill_every": 0,
+  "chaos": {
+    "toxiproxy": {
+      "enabled": false
+    },
+    "poison": {
+      "enabled": true,
+      "inject_every": 20,
+      "payload": {
+        "accountId": "demo-acc-001",
+        "amount": null,
+        "type": "DEBIT",
+        "currency": "XXX"
+      },
+      "raw_invalid_json": "{ not json",
+      "expected": {
+        "dlt_rate_gt": 0,
+        "ledger_duplicates": 0,
+        "consumer_continues": true,
+        "reconciliation_mismatch": 0
+      }
+    }
+  },
+  "invariants": [
+    "ledger_per_transaction_leq1",
+    "no_missing_with_poison_dlt",
+    "dlt_contains_exception_class_and_payload_hash"
+  ],
+  "verify": "powershell -File scripts/Invoke-Project.ps1 -Command verify-invariants; docker compose -f infra/docker-compose/docker-compose.yml exec -T postgres psql -U postgres -d transactions -c \"SELECT count(*) FROM transaction_schema.inbox_events WHERE status='DLT'\""
+}

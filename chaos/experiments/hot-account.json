@@ -1,0 +1,38 @@
+{
+  "name": "hot-account",
+  "description": "Force 90% transactions to same hot-account-001 to serialize on FOR UPDATE lock and measure p95",
+  "seed": 42,
+  "rate": 50,
+  "duration": 200,
+  "kill_every": 30,
+  "chaos": {
+    "toxiproxy": {
+      "enabled": true,
+      "latency_ms": 50,
+      "jitter_ms": 20,
+      "toxicity": 0.3
+    },
+    "hot_keys": {
+      "account_distribution": {
+        "hot-account-001": 0.9,
+        "demo-acc-001": 0.05,
+        "hot-account-002": 0.05
+      },
+      "expected": {
+        "lock_wait_p95_ms_lt": 100,
+        "throughput_tps": ">= 15 per hot account serialized",
+        "no_lost_updates": true
+      }
+    }
+  },
+  "invariants": [
+    "balance_final_eq_initial_plus_sum_ledger",
+    "no_lost_updates",
+    "ledger_per_transaction_leq1"
+  ],
+  "k6_env": {
+    "BASE_URL": "http://localhost:8080",
+    "HOT_RATIO": "0.9"
+  },
+  "verify": "powershell -File scripts/Invoke-Project.ps1 -Command verify-invariants; curl -s http://localhost:9090/api/v1/query?query=histogram_quantile%280.95%2C+rate%28ledger_lock_wait_seconds_bucket%5B5m%5D%29%29 | jq ."
+}
