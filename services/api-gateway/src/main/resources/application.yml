@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: transaction-service
+          uri: ${GATEWAY_TRANSACTION_SERVICE_URI:http://transaction-service:8080}
+          predicates:
+            - Path=/transactions/**,/actuator/health
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${GATEWAY_RATE_LIMIT_RPS:50}
+                redis-rate-limiter.burstCapacity: ${GATEWAY_RATE_LIMIT_BURST:100}
+                key-resolver: "#{@tenantKeyResolver}"
+            - AddRequestHeader=X-Gateway, api-gateway
+            - AddRequestHeader=X-Correlation-Id, "#{@correlationIdGenerator.generate()}"
+        - id: reconciliation-service
+          uri: ${GATEWAY_RECONCILIATION_SERVICE_URI:http://reconciliation-service:8084}
+          predicates:
+            - Path=/reconciliation/**
+          filters:
+            - AddRequestHeader=X-Gateway, api-gateway
+      discovery:
+        locator:
+          enabled: false
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:redis_dev}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
+          jwk-set-uri: ${JWT_JWK_SET_URI:}
+
+server:
+  port: ${SERVER_PORT:8085}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,gateway
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://jaeger:4317}
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.security: INFO
