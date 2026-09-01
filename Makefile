@@ -1,6 +1,6 @@
 POWERSHELL ?= powershell
 
-.PHONY: build test integration-test quality scan up down logs smoke inspect verify-invariants load chaos clean-data k8s-up k8s-down k8s-smoke helm-lint kind-up kind-down
+.PHONY: build test integration-test quality scan up down logs smoke inspect verify-invariants load chaos clean-data k8s-up k8s-down k8s-smoke helm-lint kind-up kind-down tf-plan tf-apply tf-destroy tf-fmt
 
 build:
 	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command build
@@ -61,3 +61,16 @@ kind-up:
 
 kind-down:
 	$(POWERSHELL) -NoProfile -File ./scripts/kind-down.ps1
+
+tf-plan:
+	terraform -chdir=infra/terraform/envs/dev init -backend-config=backend.hcl -reconfigure
+	terraform -chdir=infra/terraform/envs/dev plan
+
+tf-apply:
+	terraform -chdir=infra/terraform/envs/dev apply
+
+tf-destroy:
+	terraform -chdir=infra/terraform/envs/dev destroy
+
+tf-fmt:
+	terraform fmt -recursive infra/terraform
