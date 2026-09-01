@@ -1,0 +1,20 @@
+{
+  "type": "record",
+  "name": "FraudDecisionV1",
+  "namespace": "com.example.transactionengine.contracts.avro",
+  "fields": [
+    {"name": "eventId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "eventType", "type": "string", "default": "FraudDecision"},
+    {"name": "schemaVersion", "type": "int", "default": 1},
+    {"name": "occurredAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "transactionId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "accountId", "type": "string"},
+    {"name": "amount", "type": {"type": "bytes", "logicalType": "decimal", "precision": 19, "scale": 4}},
+    {"name": "currency", "type": "string"},
+    {"name": "decision", "type": {"type": "enum", "name": "FraudDecisionEnum", "symbols": ["PASS", "REVIEW", "BLOCK"]}},
+    {"name": "reasonCode", "type": "string"},
+    {"name": "ruleCode", "type": "string"},
+    {"name": "riskScore", "type": "int"},
+    {"name": "metadata", "type": {"type": "map", "values": "string"}, "default": {}}
+  ]
+}

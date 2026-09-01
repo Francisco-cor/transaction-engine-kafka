@@ -1,0 +1,19 @@
+{
+  "type": "record",
+  "name": "TransactionCreatedV2",
+  "namespace": "com.example.transactionengine.contracts.avro",
+  "doc": "TransactionCreated v2 - additive field customerNote, BACKWARD compatible with v1 (default null)",
+  "fields": [
+    {"name": "eventId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "eventType", "type": "string", "default": "TransactionCreated"},
+    {"name": "schemaVersion", "type": "int", "default": 2},
+    {"name": "occurredAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "transactionId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "accountId", "type": "string"},
+    {"name": "amount", "type": {"type": "bytes", "logicalType": "decimal", "precision": 19, "scale": 4}},
+    {"name": "currency", "type": "string"},
+    {"name": "type", "type": {"type": "enum", "name": "TransactionType", "symbols": ["DEBIT", "CREDIT"]}},
+    {"name": "metadata", "type": {"type": "map", "values": "string"}, "default": {}},
+    {"name": "customerNote", "type": ["null", "string"], "default": null, "doc": "Optional customer note, additive for v2"}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "TransactionCreatedV1",
+  "namespace": "com.example.transactionengine.contracts.avro",
+  "doc": "TransactionCreated v1 - backward compatible base",
+  "fields": [
+    {"name": "eventId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "eventType", "type": "string", "default": "TransactionCreated"},
+    {"name": "schemaVersion", "type": "int", "default": 1},
+    {"name": "occurredAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "transactionId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "accountId", "type": "string"},
+    {"name": "amount", "type": {"type": "bytes", "logicalType": "decimal", "precision": 19, "scale": 4}},
+    {"name": "currency", "type": "string"},
+    {"name": "type", "type": {"type": "enum", "name": "TransactionType", "symbols": ["DEBIT", "CREDIT"]}},
+    {"name": "metadata", "type": {"type": "map", "values": "string"}, "default": {}}
+  ]
+}
