@@ -62,6 +62,9 @@ ledger:
   consumer:
     retry-interval-ms: ${LEDGER_RETRY_INTERVAL_MS:1000}
     max-attempts: ${LEDGER_MAX_ATTEMPTS:3}
+    backoff-multiplier: ${LEDGER_BACKOFF_MULTIPLIER:2.0}
+    backoff-max-interval-ms: ${LEDGER_BACKOFF_MAX_INTERVAL_MS:10000}
+    jitter-factor: ${LEDGER_JITTER_FACTOR:0.2}
   outbox:
     publisher-enabled: ${LEDGER_OUTBOX_PUBLISHER_ENABLED:true}
     poll-delay-ms: ${LEDGER_OUTBOX_POLL_DELAY_MS:1000}

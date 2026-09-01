@@ -65,6 +65,9 @@ fraud:
   consumer:
     retry-interval-ms: ${FRAUD_RETRY_INTERVAL_MS:1000}
     max-attempts: ${FRAUD_MAX_ATTEMPTS:3}
+    backoff-multiplier: ${FRAUD_BACKOFF_MULTIPLIER:2.0}
+    backoff-max-interval-ms: ${FRAUD_BACKOFF_MAX_INTERVAL_MS:10000}
+    jitter-factor: ${FRAUD_JITTER_FACTOR:0.2}
   cache:
     ttl-seconds: ${FRAUD_CACHE_TTL_SECONDS:300}
   rules:
