@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   application:
     name: reconciliation-service
   datasource:
@@ -10,6 +12,7 @@ spring:
       maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
 
 server:
+  shutdown: graceful
   port: ${SERVER_PORT:8084}
 
 management:

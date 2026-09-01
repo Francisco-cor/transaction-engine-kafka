@@ -93,6 +93,7 @@ services:
     build:
       context: ../..
       dockerfile: services/transaction-service/Dockerfile
+    stop_grace_period: 45s
     depends_on:
       kafka:
         condition: service_healthy
@@ -113,6 +114,7 @@ services:
     build:
       context: ../..
       dockerfile: services/ledger-service/Dockerfile
+    stop_grace_period: 45s
     depends_on:
       kafka:
         condition: service_healthy
@@ -133,6 +135,7 @@ services:
     build:
       context: ../..
       dockerfile: services/fraud-service/Dockerfile
+    stop_grace_period: 45s
     depends_on:
       kafka:
         condition: service_healthy
@@ -156,6 +159,7 @@ services:
     build:
       context: ../..
       dockerfile: services/reconciliation-service/Dockerfile
+    stop_grace_period: 45s
     depends_on:
       postgres-migrate:
         condition: service_completed_successfully
@@ -165,6 +169,26 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-transactions}
       DB_USER: ${POSTGRES_APP_USER:-transaction_app}
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
+
+  api-gateway:
+    build:
+      context: ../..
+      dockerfile: services/api-gateway/Dockerfile
+    stop_grace_period: 45s
+    depends_on:
+      redis:
+        condition: service_healthy
+      transaction-service:
+        condition: service_started
+    ports:
+      - "8085:8085"
+    environment:
+      GATEWAY_TRANSACTION_SERVICE_URI: http://transaction-service:8080
+      GATEWAY_RECONCILIATION_SERVICE_URI: http://reconciliation-service:8084
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_dev}
+      GATEWAY_SECURITY_ENABLED: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
 
   redis:
     image: redis:7.4-alpine

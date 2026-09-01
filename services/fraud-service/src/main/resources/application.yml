@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   application:
     name: fraud-service
   datasource:
@@ -29,6 +31,7 @@ spring:
         compression.type: zstd
 
 server:
+  shutdown: graceful
   port: ${SERVER_PORT:8083}
 
 management:

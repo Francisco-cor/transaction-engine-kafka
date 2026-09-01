@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   application:
     name: api-gateway
   cloud:
@@ -38,6 +40,7 @@ spring:
           jwk-set-uri: ${JWT_JWK_SET_URI:}
 
 server:
+  shutdown: graceful
   port: ${SERVER_PORT:8085}
 
 management:
