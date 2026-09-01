@@ -140,7 +140,22 @@ switch ($Command) {
         Write-Host 'Se eliminaron los volúmenes nombrados del Compose local.'
     }
     'load' {
-        throw 'El comando load queda reservado para la fase 13; todavía no existe un generador de carga verificable.'
+        $k6 = Get-Command k6 -ErrorAction SilentlyContinue
+        if ($null -eq $k6) {
+            Write-Host 'k6 no encontrado, simulando carga local con Invoke-RestMethod...'
+            # Fallback simple: envía 100 transacciones demo
+            for ($i=0; $i -lt 100; $i++) {
+                $key = [guid]::NewGuid().ToString()
+                $body = '{"accountId":"demo-acc-001","amount":10.00,"type":"DEBIT","currency":"MXN"}'
+                try {
+                    Invoke-RestMethod -Method Post -Uri http://localhost:8080/transactions -Headers @{'Idempotency-Key'=$key;'X-Tenant-Id'='demo'} -ContentType 'application/json' -Body $body | Out-Null
+                } catch {}
+            }
+            Write-Host 'Fallback 100 transacciones enviadas'
+        } else {
+            & $k6.Source run load-tests/k6-transactions.js
+            if ($LASTEXITCODE -ne 0) { throw "k6 falló con código $LASTEXITCODE" }
+        }
     }
     'chaos' {
         throw 'El comando chaos queda reservado para la fase 13; todavía no existe una suite de caos verificable.'
