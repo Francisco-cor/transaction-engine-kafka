@@ -2,7 +2,12 @@
 param(
     [ValidateSet('help', 'build', 'test', 'integration-test', 'quality', 'scan', 'up', 'down', 'logs', 'smoke', 'inspect', 'verify-invariants', 'load', 'chaos', 'clean-data', 'k8s-up', 'k8s-down', 'k8s-smoke', 'k8s-logs', 'helm-lint', 'kind-up', 'kind-down')]
     [string]$Command = 'help',
-    [switch]$RemoveData
+    [switch]$RemoveData,
+    [int]$Seed = 42,
+    [string]$RunId = "",
+    [int]$Duration = 200,
+    [int]$Rate = 50,
+    [int]$KillEvery = 30
 )
 
 $ErrorActionPreference = 'Stop'
@@ -158,7 +163,23 @@ switch ($Command) {
         }
     }
     'chaos' {
-        throw 'El comando chaos queda reservado para la fase 13; todavía no existe una suite de caos verificable.'
+        $python = Get-Command python -ErrorAction SilentlyContinue
+        if ($null -eq $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
+        if ($null -eq $python) { throw 'python no está disponible en PATH.' }
+        $suite = Join-Path $ProjectRoot 'chaos/suite.py'
+        $bench = Join-Path $ProjectRoot 'chaos/benchmark.ps1'
+        if (Test-Path -LiteralPath $bench) {
+            Write-Host "Ejecutando benchmark con Seed=$Seed RunId=$RunId Duration=$Duration Rate=$Rate KillEvery=$KillEvery"
+            & $bench -Seed $Seed -RunId $RunId -Duration $Duration -Rate $Rate -KillEvery $KillEvery
+            if ($LASTEXITCODE -ne 0) { throw "benchmark falló con $LASTEXITCODE" }
+        } elseif (Test-Path -LiteralPath $suite) {
+            $args = @($suite.Source, "--seed", $Seed, "--duration", $Duration, "--rate", $Rate, "--kill-every", $KillEvery)
+            if (-not [string]::IsNullOrEmpty($RunId)) { $args += @("--run-id", $RunId) }
+            & $python.Source @args
+            if ($LASTEXITCODE -ne 0) { throw "chaos suite falló con $LASTEXITCODE" }
+        } else {
+            throw "No se encontró chaos/suite.py ni chaos/benchmark.ps1"
+        }
     }
     'k8s-up' {
         $script = Join-Path $ProjectRoot 'scripts/kind-up.ps1'

@@ -39,7 +39,10 @@ load:
 	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command load
 
 chaos:
-	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command chaos
+	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command chaos -Seed $(SEED) -RunId $(RUN_ID) -Duration $(DURATION) -Rate $(RATE) -KillEvery $(KILL_EVERY)
+
+benchmark:
+	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command chaos -Seed $(SEED) -RunId $(RUN_ID) -Duration $(DURATION) -Rate $(RATE) -KillEvery $(KILL_EVERY)
 
 clean-data:
 	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command clean-data -RemoveData
