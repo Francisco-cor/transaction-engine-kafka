@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('help', 'build', 'test', 'integration-test', 'quality', 'scan', 'up', 'down', 'logs', 'smoke', 'inspect', 'verify-invariants', 'load', 'chaos', 'clean-data')]
+    [ValidateSet('help', 'build', 'test', 'integration-test', 'quality', 'scan', 'up', 'down', 'logs', 'smoke', 'inspect', 'verify-invariants', 'load', 'chaos', 'clean-data', 'k8s-up', 'k8s-down', 'k8s-smoke', 'k8s-logs', 'helm-lint', 'kind-up', 'kind-down')]
     [string]$Command = 'help',
     [switch]$RemoveData
 )
@@ -160,7 +160,55 @@ switch ($Command) {
     'chaos' {
         throw 'El comando chaos queda reservado para la fase 13; todavía no existe una suite de caos verificable.'
     }
+    'k8s-up' {
+        $script = Join-Path $ProjectRoot 'scripts/kind-up.ps1'
+        if (-not (Test-Path -LiteralPath $script)) { throw "No se encontró $script" }
+        & $script
+        if ($LASTEXITCODE -ne 0) { throw "kind-up falló con $LASTEXITCODE" }
+    }
+    'kind-up' {
+        $script = Join-Path $ProjectRoot 'scripts/kind-up.ps1'
+        & $script
+        if ($LASTEXITCODE -ne 0) { throw "kind-up falló con $LASTEXITCODE" }
+    }
+    'k8s-down' {
+        $script = Join-Path $ProjectRoot 'scripts/kind-down.ps1'
+        if (-not (Test-Path -LiteralPath $script)) { throw "No se encontró $script" }
+        & $script
+        if ($LASTEXITCODE -ne 0) { throw "kind-down falló con $LASTEXITCODE" }
+    }
+    'kind-down' {
+        $script = Join-Path $ProjectRoot 'scripts/kind-down.ps1'
+        & $script
+        if ($LASTEXITCODE -ne 0) { throw "kind-down falló con $LASTEXITCODE" }
+    }
+    'k8s-smoke' {
+        $kubectl = Get-Command kubectl -ErrorAction SilentlyContinue
+        if ($null -eq $kubectl) { throw 'kubectl no está disponible en PATH.' }
+        Write-Host 'Esperando pods ready...'
+        & $kubectl.Source wait --for=condition=ready pod -l app.kubernetes.io/instance=transaction-engine --timeout=120s
+        if ($LASTEXITCODE -ne 0) { throw "k8s-smoke wait falló" }
+        Write-Host 'Verificando rollout sin pérdida...'
+        & $kubectl.Source rollout status deployment/transaction-engine-transaction-service --timeout=60s
+        & $kubectl.Source rollout status deployment/transaction-engine-ledger-service --timeout=60s
+        & $kubectl.Source get hpa
+        & $kubectl.Source get pdb
+        Write-Host '[OK] k8s-smoke pasó'
+    }
+    'k8s-logs' {
+        $kubectl = Get-Command kubectl -ErrorAction SilentlyContinue
+        if ($null -eq $kubectl) { throw 'kubectl no está disponible en PATH.' }
+        & $kubectl.Source logs -l app.kubernetes.io/instance=transaction-engine --tail=200 --all-containers
+    }
+    'helm-lint' {
+        $helm = Get-Command helm -ErrorAction SilentlyContinue
+        if ($null -eq $helm) { throw 'helm no está disponible en PATH.' }
+        $chart = Join-Path $ProjectRoot 'infra/helm/umbrella'
+        & $helm.Source lint $chart -f (Join-Path $chart 'values-dev.yaml')
+        if ($LASTEXITCODE -ne 0) { throw "helm lint falló" }
+        Write-Host '[OK] helm lint pasó'
+    }
     default {
-        Write-Host 'Comandos: build, test, integration-test, quality, scan, up, down, logs, smoke, inspect, verify-invariants, load, chaos, clean-data'
+        Write-Host 'Comandos: build, test, integration-test, quality, scan, up, down, logs, smoke, inspect, verify-invariants, load, chaos, clean-data, k8s-up, k8s-down, k8s-smoke, k8s-logs, helm-lint'
     }
 }

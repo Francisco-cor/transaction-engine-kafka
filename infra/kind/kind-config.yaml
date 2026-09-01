@@ -1,0 +1,27 @@
+# kind config for local k8s demo (F9)
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: transaction-engine
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP
+      - containerPort: 30082
+        hostPort: 8082
+        protocol: TCP
+      - containerPort: 30085
+        hostPort: 8085
+        protocol: TCP
+  - role: worker
+  - role: worker
+networking:
+  apiServerAddress: 127.0.0.1
+  apiServerPort: 6443
