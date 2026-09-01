@@ -15,4 +15,14 @@ public record CreateTransactionRequest(
     @NotNull TransactionType type,
     @NotBlank
         @Pattern(regexp = "[a-zA-Z]{3}", message = "currency must be 3 letters (ISO 4217)")
-        String currency) {}
+        String currency,
+    @Size(max = 256) String customerNote) {
+  public CreateTransactionRequest {
+    // Allow null customerNote for v1 backward compat
+  }
+
+  public CreateTransactionRequest(
+      String accountId, BigDecimal amount, TransactionType type, String currency) {
+    this(accountId, amount, type, currency, null);
+  }
+}

@@ -14,7 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.RoundingMode;
 import java.time.Clock;
-
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -25,7 +25,8 @@ import org.springframework.util.StringUtils;
 public class TransactionApplicationService {
 
   private static final String EVENT_TYPE = "TransactionCreated";
-  private static final int SCHEMA_VERSION = 1;
+  private static final int SCHEMA_VERSION_V1 = 1;
+  private static final int SCHEMA_VERSION_V2 = 2;
 
   private final TransactionRepository transactions;
   private final OutboxRepository outbox;
@@ -86,30 +87,53 @@ public class TransactionApplicationService {
     var created = inserted.get();
     var eventId = UUID.randomUUID();
     var occurredAt = clock.instant();
-    var event =
-        new TransactionCreatedV1(
-            eventId,
-            EVENT_TYPE,
-            SCHEMA_VERSION,
-            occurredAt,
-            created.transactionId(),
-            created.accountId(),
-            created.amount(),
-            created.currency(),
-            created.type().name(),
-            Map.of());
+    boolean isV2 = StringUtils.hasText(normalizedRequest.customerNote());
+    int schemaVersion = isV2 ? SCHEMA_VERSION_V2 : SCHEMA_VERSION_V1;
+    // Build event payload as map to support additive field without breaking v1 consumers (BACKWARD compat)
+    var eventMap = new LinkedHashMap<String, Object>();
+    eventMap.put("eventId", eventId.toString());
+    eventMap.put("eventType", EVENT_TYPE);
+    eventMap.put("schemaVersion", schemaVersion);
+    eventMap.put("occurredAt", occurredAt.toString());
+    eventMap.put("transactionId", created.transactionId().toString());
+    eventMap.put("accountId", created.accountId());
+    eventMap.put("amount", created.amount());
+    eventMap.put("currency", created.currency());
+    eventMap.put("type", created.type().name());
+    eventMap.put("metadata", Map.of());
+    if (isV2) {
+      eventMap.put("customerNote", normalizedRequest.customerNote());
+    }
+    // Also keep TransactionCreatedV1 for validation (when v1)
+    if (!isV2) {
+      var v1Event =
+          new TransactionCreatedV1(
+              eventId,
+              EVENT_TYPE,
+              schemaVersion,
+              occurredAt,
+              created.transactionId(),
+              created.accountId(),
+              created.amount(),
+              created.currency(),
+              created.type().name(),
+              Map.of());
+      // Ensure v1 serialization stays compatible
+      eventMap.putIfAbsent("eventId", v1Event.eventId().toString());
+    }
 
     try {
+      String payload = objectMapper.writeValueAsString(eventMap);
       outbox.insert(
           new OutboxEvent(
               created.transactionId(),
               EVENT_TYPE,
-              SCHEMA_VERSION,
-              objectMapper.writeValueAsString(event),
+              schemaVersion,
+              payload,
               objectMapper.writeValueAsString(
                   Map.of(
                       "event_type", EVENT_TYPE,
-                      "schema_version", Integer.toString(SCHEMA_VERSION),
+                      "schema_version", Integer.toString(schemaVersion),
                       "traceparent", TraceContext.resolve(traceparent),
                       "correlation_id", resolvedCorrelationId,
                       "producer", "transaction-service",
@@ -118,7 +142,7 @@ public class TransactionApplicationService {
               created.accountId(),
               "transactions.created.v1"));
     } catch (JsonProcessingException exception) {
-      throw new IllegalStateException("Could not serialize TransactionCreated.v1", exception);
+      throw new IllegalStateException("Could not serialize TransactionCreated", exception);
     }
 
     return TransactionResponse.from(created, resolvedCorrelationId);
@@ -158,7 +182,15 @@ public class TransactionApplicationService {
       }
       // Account id trimming and length already validated; ensure no whitespace-only
       var accountId = requiredHeader(request.accountId(), "accountId");
-      return new CreateTransactionRequest(accountId, normalizedAmount, request.type(), rawCurrency);
+      String customerNote = request.customerNote();
+      if (customerNote != null) {
+        customerNote = customerNote.trim();
+        if (customerNote.isEmpty()) customerNote = null;
+        if (customerNote != null && customerNote.length() > 256) {
+          throw new IllegalArgumentException("customerNote is too long");
+        }
+      }
+      return new CreateTransactionRequest(accountId, normalizedAmount, request.type(), rawCurrency, customerNote);
     } catch (ArithmeticException exception) {
       throw new IllegalArgumentException("amount supports at most four decimal places", exception);
     }
