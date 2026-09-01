@@ -45,7 +45,7 @@ management:
         enabled: true
       group:
         readiness:
-          include: readinessState,db
+          include: readinessState,db,kafka
   health:
     livenessstate:
       enabled: true
