@@ -1,0 +1,69 @@
+groups:
+  - name: slo
+    interval: 30s
+    rules:
+      - alert: HighApiLatency
+        expr: histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri="/transactions"}[5m])) by (le)) > 1
+        for: 2m
+        labels:
+          severity: warning
+          dashboard: api-transaction
+        annotations:
+          summary: "API p95 >1s"
+          runbook: "docs/runbooks/observability.md#troubleshooting"
+
+      - alert: ConsumerLagHigh
+        expr: max(kafka_consumer_lag) > 1000
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka consumer lag >1000"
+
+      - alert: DltGrowing
+        expr: increase(kafka_DLT_records_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DLT rate >0 - poison or permanent failure"
+
+      - alert: OutboxBacklogGrowing
+        expr: outbox_pending_events > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox backlog >0 for 60s"
+
+      - alert: DbPoolExhausted
+        expr: hikaricp_connections_pending > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Hikari pool pending connections"
+
+      - alert: LedgerDuplicates
+        expr: increase(ledger_duplicate_events_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ledger duplicate events detected - check inbox constraint"
+
+      - alert: CircuitBreakerOpen
+        expr: resilience4j_circuitbreaker_state == 1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Circuit breaker open"
+
+      - alert: ReconciliationMismatch
+        expr: increase(reconciliation_mismatch_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Reconciliation MISMATCH - run verify-invariants"
