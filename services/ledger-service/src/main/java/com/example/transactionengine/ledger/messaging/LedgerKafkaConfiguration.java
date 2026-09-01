@@ -1,10 +1,14 @@
 package com.example.transactionengine.ledger.messaging;
 
+import com.example.transactionengine.ledger.application.PayloadHash;
 import com.example.transactionengine.ledger.exception.PermanentLedgerException;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,6 +48,27 @@ public class LedgerKafkaConfiguration {
         (record, exception) ->
             new TopicPartition(record.topic() + ".ledger-service.DLT", record.partition());
     var recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate, destinationResolver);
+    // Enrich DLT headers with failure metadata (ADR-006)
+    recoverer.setHeadersFunction(
+        (record, ex) -> {
+          var headers = new RecordHeaders();
+          String payload = record.value() != null ? record.value().toString() : "";
+          String payloadHash = PayloadHash.sha256(payload);
+          headers.add("exception_class", ex.getClass().getName().getBytes(StandardCharsets.UTF_8));
+          String msg = ex.getMessage() != null ? ex.getMessage().substring(0, Math.min(1000, ex.getMessage().length())) : "";
+          headers.add("exception_message", msg.getBytes(StandardCharsets.UTF_8));
+          headers.add("payload_hash", payloadHash.getBytes(StandardCharsets.UTF_8));
+          headers.add("consumer_group", "ledger-service".getBytes(StandardCharsets.UTF_8));
+          headers.add("first_failure_at", Instant.now().toString().getBytes(StandardCharsets.UTF_8));
+          headers.add("last_failure_at", Instant.now().toString().getBytes(StandardCharsets.UTF_8));
+          headers.add("failure_count", String.valueOf(maxAttempts).getBytes(StandardCharsets.UTF_8));
+          // Preserve original traceparent if present
+          var trace = record.headers().lastHeader("traceparent");
+          if (trace != null) headers.add("traceparent", trace.value());
+          var corr = record.headers().lastHeader("correlation_id");
+          if (corr != null) headers.add("correlation_id", corr.value());
+          return headers;
+        });
     var backOff = new ExponentialBackOff(retryIntervalMs, multiplier);
     backOff.setMaxInterval(maxIntervalMs);
     backOff.setMaxElapsedTime(maxIntervalMs * Math.max(1, maxAttempts));
