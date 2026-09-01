@@ -1,0 +1,20 @@
+{{- /*
+Global ConfigMap consumed by all services (F9-1 minimal, no secrets)
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "umbrella.fullname" . }}-config
+  labels:
+    {{- include "umbrella.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.global.environment | quote }}
+  KAFKA_BOOTSTRAP_SERVERS: {{ .Values.config.kafka.bootstrapServers | quote }}
+  DB_URL: {{ printf "jdbc:postgresql://%s:%v/%s" .Values.config.postgres.host .Values.config.postgres.port .Values.config.postgres.database | quote }}
+  DB_USER: {{ .Values.config.postgres.appUser | quote }}
+  REDIS_HOST: {{ .Values.config.redis.host | quote }}
+  REDIS_PORT: {{ .Values.config.redis.port | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.config.otel.endpoint | quote }}
+  # service-specific topics
+  TRANSACTION_CREATED_TOPIC: "transactions.created.v1"
+  LEDGER_INPUT_TOPIC: "transactions.created.v1"

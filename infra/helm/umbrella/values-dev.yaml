@@ -1,0 +1,35 @@
+# Development overrides for kind/minikube — not for prod
+global:
+  environment: dev
+  imagePullPolicy: IfNotPresent
+
+replicaCount: 1
+
+images:
+  transactionService: "transaction-service:dev"
+  ledgerService: "ledger-service:dev"
+  fraudService: "fraud-service:dev"
+  reconciliationService: "reconciliation-service:dev"
+  notificationService: "notification-service:dev"
+  apiGateway: "api-gateway:dev"
+  flyway: "flyway/flyway:10.17.0-alpine"
+
+# In dev, gateway security can be disabled for dx (matches docker-compose GATEWAY_SECURITY_ENABLED=false)
+gateway:
+  securityEnabled: false
+
+# Local kind postgres/kafka from docker-compose are external; when running inside kind, these should point to in-cluster pg/kafka
+# For local kind demo, you can use the same docker-compose postgres via hostPort or deploy pg via helm dependency.
+config:
+  kafka:
+    bootstrapServers: "kafka:29092"
+  postgres:
+    host: postgres
+    port: 5432
+
+# Dev-only plain passwords allowed only for local kind, never committed for prod
+# These are placeholders with _dev suffix; prod must use external-secrets
+devSecrets:
+  postgresAppPassword: "transaction_app_dev"
+  postgresMigratorPassword: "transaction_migrator_dev"
+  redisPassword: "redis_dev"

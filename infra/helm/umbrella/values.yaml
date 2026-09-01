@@ -1,0 +1,63 @@
+# Default values for transaction-engine umbrella.
+# This is a chart-wide configuration consumed by all sub-templates.
+global:
+  environment: local
+  imageRegistry: ""
+  imagePullPolicy: IfNotPresent
+  namespaceOverride: ""
+  # No plain secrets here; prod overrides via external-secrets / SealedSecrets or --set
+  # See values-dev.yaml and infra/k8s/external-secrets.yaml
+
+replicaCount: 1
+
+images:
+  transactionService: "transaction-service:0.1.0-SNAPSHOT"
+  ledgerService: "ledger-service:0.1.0-SNAPSHOT"
+  fraudService: "fraud-service:0.1.0-SNAPSHOT"
+  reconciliationService: "reconciliation-service:0.1.0-SNAPSHOT"
+  notificationService: "notification-service:0.1.0-SNAPSHOT"
+  apiGateway: "api-gateway:0.1.0-SNAPSHOT"
+  flyway: "flyway/flyway:10.17.0-alpine"
+
+service:
+  transactionService:
+    port: 8080
+  ledgerService:
+    port: 8082
+  fraudService:
+    port: 8083
+  reconciliationService:
+    port: 8084
+  notificationService:
+    port: 8086
+  apiGateway:
+    port: 8085
+
+config:
+  kafka:
+    bootstrapServers: "kafka:29092"
+    partitions: 6
+  postgres:
+    host: postgres
+    port: 5432
+    database: transactions
+    appUser: transaction_app
+    migratorUser: transaction_migrator
+    schema: transaction_schema
+  redis:
+    host: redis
+    port: 6379
+  otel:
+    endpoint: "http://jaeger:4317"
+
+# External secrets placeholder — real values come from External Secrets Operator
+secrets:
+  # postgresAppPassword: ""  # do not set plain; use external-secrets
+  # postgresMigratorPassword: ""
+  # redisPassword: ""
+  # jwtIssuerUri: ""
+
+# Resources will be hardened in F9-2
+resources: {}
+
+# Probes, PDB, HPA, KEDA, affinity handled in follow-up commits

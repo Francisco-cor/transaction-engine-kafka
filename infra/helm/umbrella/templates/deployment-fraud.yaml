@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "umbrella.fullname" . }}-fraud-service
+  labels:
+    {{- include "umbrella.labels" . | nindent 4 }}
+    app.kubernetes.io/component: fraud-service
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "umbrella.name" . }}
+      app.kubernetes.io/component: fraud-service
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "umbrella.name" . }}
+        app.kubernetes.io/component: fraud-service
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: fraud-service
+          image: "{{ .Values.images.fraudService }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.fraudService.port }}
+              protocol: TCP
+          env:
+            - name: SERVER_PORT
+              value: {{ .Values.service.fraudService.port | quote }}
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "umbrella.fullname" . }}-config
+                  key: DB_URL
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "umbrella.fullname" . }}-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "umbrella.fullname" . }}-config
+                  key: REDIS_HOST
+            {{- if .Values.devSecrets }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "umbrella.fullname" . }}-dev-secrets
+                  key: DB_PASSWORD
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "umbrella.fullname" . }}-dev-secrets
+                  key: REDIS_PASSWORD
+            {{- end }}

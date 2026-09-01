@@ -1,0 +1,25 @@
+transaction-engine deployed!
+
+Release: {{ .Release.Name }}
+Environment: {{ .Values.global.environment }}
+Namespace: {{ .Release.Namespace }}
+
+Services:
+  transaction-service: http://{{ include "umbrella.fullname" . }}-transaction-service:{{ .Values.service.transactionService.port }}
+  ledger-service: http://{{ include "umbrella.fullname" . }}-ledger-service:{{ .Values.service.ledgerService.port }}
+  api-gateway: http://{{ include "umbrella.fullname" . }}-api-gateway:{{ .Values.service.apiGateway.port }}
+
+Check rollout:
+  kubectl rollout status deployment/{{ include "umbrella.fullname" . }}-transaction-service
+  kubectl rollout status deployment/{{ include "umbrella.fullname" . }}-ledger-service
+  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance={{ .Release.Name }} --timeout=120s
+
+Health:
+  kubectl port-forward svc/{{ include "umbrella.fullname" . }}-transaction-service 8080:{{ .Values.service.transactionService.port }} &
+  curl http://localhost:8080/actuator/health/readiness
+
+Flyway:
+  kubectl logs job/{{ include "umbrella.fullname" . }}-migrate
+
+Secrets: dev uses {{ include "umbrella.fullname" . }}-dev-secrets ( _dev only ); prod requires ExternalSecrets.

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: transaction-engine
+description: Umbrella chart for Financial Transaction & Reconciliation Platform (transaction, ledger, fraud, reconciliation, notification, gateway)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - fintech
+  - kafka
+  - ledger
+  - observability
+home: https://github.com/example/transaction-engine-kafka
+sources:
+  - https://github.com/example/transaction-engine-kafka
+maintainers:
+  - name: platform-team
+    email: platform@example.com
+kubeVersion: ">=1.27.0"
+dependencies: []

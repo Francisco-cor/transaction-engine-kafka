@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "umbrella.fullname" . }}-reconciliation-service
+  labels:
+    {{- include "umbrella.labels" . | nindent 4 }}
+    app.kubernetes.io/component: reconciliation-service
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "umbrella.name" . }}
+      app.kubernetes.io/component: reconciliation-service
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "umbrella.name" . }}
+        app.kubernetes.io/component: reconciliation-service
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: reconciliation-service
+          image: "{{ .Values.images.reconciliationService }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.reconciliationService.port }}
+              protocol: TCP
+          env:
+            - name: SERVER_PORT
+              value: {{ .Values.service.reconciliationService.port | quote }}
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "umbrella.fullname" . }}-config
+                  key: DB_URL
+            {{- if .Values.devSecrets }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "umbrella.fullname" . }}-dev-secrets
+                  key: DB_PASSWORD
+            {{- end }}

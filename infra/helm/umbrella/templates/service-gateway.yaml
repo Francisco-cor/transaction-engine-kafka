@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "umbrella.fullname" . }}-api-gateway
+  labels:
+    {{- include "umbrella.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api-gateway
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.service.apiGateway.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: {{ include "umbrella.name" . }}
+    app.kubernetes.io/component: api-gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}

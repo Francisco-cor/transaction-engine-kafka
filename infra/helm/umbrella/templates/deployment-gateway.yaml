@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "umbrella.fullname" . }}-api-gateway
+  labels:
+    {{- include "umbrella.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api-gateway
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "umbrella.name" . }}
+      app.kubernetes.io/component: api-gateway
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "umbrella.name" . }}
+        app.kubernetes.io/component: api-gateway
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: api-gateway
+          image: "{{ .Values.images.apiGateway }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.apiGateway.port }}
+              protocol: TCP
+          env:
+            - name: SERVER_PORT
+              value: {{ .Values.service.apiGateway.port | quote }}
+            - name: GATEWAY_TRANSACTION_SERVICE_URI
+              value: "http://{{ include "umbrella.fullname" . }}-transaction-service:{{ .Values.service.transactionService.port }}"
+            - name: GATEWAY_RECONCILIATION_SERVICE_URI
+              value: "http://{{ include "umbrella.fullname" . }}-reconciliation-service:{{ .Values.service.reconciliationService.port }}"
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "umbrella.fullname" . }}-config
+                  key: REDIS_HOST
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "umbrella.fullname" . }}-config
+                  key: OTEL_EXPORTER_OTLP_ENDPOINT
