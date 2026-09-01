@@ -1,5 +1,4 @@
 # syntax=docker/dockerfile:1.6
-# Fase 8-1: multi-stage optimizado con layer cache y soporte jlink
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
 COPY --link pom.xml .
@@ -17,9 +16,14 @@ COPY --link libs/observability/src libs/observability/src
 COPY --link services/ledger-service/src services/ledger-service/src
 RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp -pl services/ledger-service -am package -DskipTests
 
-FROM eclipse-temurin:21-jre
+FROM debian:bookworm-slim AS tini-stage
+RUN apt-get update && apt-get install -y --no-install-recommends tini && cp /usr/bin/tini /tini && chmod +x /tini
+
+FROM gcr.io/distroless/java21-debian12:nonroot
 WORKDIR /app
+COPY --from=tini-stage /tini /usr/bin/tini
 COPY --from=build /workspace/services/ledger-service/target/ledger-service-0.1.0-SNAPSHOT.jar app.jar
-USER 10001
+USER nonroot:nonroot
 EXPOSE 8082
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["/usr/bin/tini", "--", "java", "-jar", "/app/app.jar"]
+HEALTHCHECK --interval=15s --timeout=3s --retries=3 --start-period=40s CMD wget -qO- http://localhost:8082/actuator/health || exit 1

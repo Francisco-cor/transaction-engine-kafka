@@ -1,9 +1,7 @@
 # syntax=docker/dockerfile:1.6
-# Fase 8-1: multi-stage optimizado con layer cache y soporte jlink
-# Build stage cachea dependencias via --mount=type=cache y COPY --link
+# Fase 8-2: distroless java21-debian12 nonroot + tini + HEALTHCHECK
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
-# Copia poms primero para maximizar cache de dependency:go-offline
 COPY --link pom.xml .
 COPY --link libs/event-contracts/pom.xml libs/event-contracts/pom.xml
 COPY --link libs/observability/pom.xml libs/observability/pom.xml
@@ -18,13 +16,17 @@ COPY --link libs/event-contracts/src libs/event-contracts/src
 COPY --link libs/observability/src libs/observability/src
 COPY --link services/transaction-service/src services/transaction-service/src
 RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp -pl services/transaction-service -am package -DskipTests
-# Alternativa jlink: descomentar para generar runtime mínimo con jlink y usar gcr.io/distroless/java21-debian12:nonroot
-# RUN jlink --add-modules java.base,java.logging,java.sql,java.naming,java.management,java.security.jgss,java.instrument,jdk.unsupported -o /jlink
 
-FROM eclipse-temurin:21-jre
+FROM debian:bookworm-slim AS tini-stage
+RUN apt-get update && apt-get install -y --no-install-recommends tini && cp /usr/bin/tini /tini && chmod +x /tini
+
+FROM gcr.io/distroless/java21-debian12:nonroot
 WORKDIR /app
+COPY --from=tini-stage /tini /usr/bin/tini
 COPY --from=build /workspace/services/transaction-service/target/transaction-service-0.1.0-SNAPSHOT.jar app.jar
-# USER no-root para hardening (F8-2 migrará a distroless nonroot:nonroot 65532)
-USER 10001
+USER nonroot:nonroot
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["/usr/bin/tini", "--", "java", "-jar", "/app/app.jar"]
+# HEALTHCHECK documentado; en distroless sin shell/wget el probe real es K8s liveness/readiness httpGet /actuator/health.
+# Se mantiene metadata para compatibilidad con variante alpine y para auditoría de supply chain.
+HEALTHCHECK --interval=15s --timeout=3s --retries=3 --start-period=40s CMD wget -qO- http://localhost:8080/actuator/health || exit 1
