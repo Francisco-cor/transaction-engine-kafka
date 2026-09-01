@@ -225,13 +225,13 @@ public class LedgerApplicationService {
         || event.transactionId() == null
         || event.eventType() == null
         || !CREATED_EVENT.equals(event.eventType())
-        || event.schemaVersion() != SCHEMA_VERSION
+        || (event.schemaVersion() != 1 && event.schemaVersion() != 2)
         || !StringUtils.hasText(event.accountId())
         || !StringUtils.hasText(event.currency())
         || event.amount() == null
         || event.amount().signum() <= 0
         || !StringUtils.hasText(event.type())) {
-      throw new PermanentLedgerException("Invalid TransactionCreated.v1 payload");
+      throw new PermanentLedgerException("Invalid TransactionCreated payload (expect schemaVersion 1 or 2)");
     }
     try {
       TransactionType.valueOf(event.type());

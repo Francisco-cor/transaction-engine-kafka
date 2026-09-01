@@ -154,12 +154,12 @@ public class FraudApplicationService {
         || event.eventId() == null
         || event.transactionId() == null
         || !"TransactionCreated".equals(event.eventType())
-        || event.schemaVersion() != SCHEMA_VERSION
+        || (event.schemaVersion() != 1 && event.schemaVersion() != 2)
         || !StringUtils.hasText(event.accountId())
         || event.amount() == null
         || event.amount().signum() <= 0
         || !StringUtils.hasText(event.currency())) {
-      throw new PermanentFraudException("Invalid TransactionCreated.v1 payload");
+      throw new PermanentFraudException("Invalid TransactionCreated payload (expect 1 or 2)");
     }
   }
 }
