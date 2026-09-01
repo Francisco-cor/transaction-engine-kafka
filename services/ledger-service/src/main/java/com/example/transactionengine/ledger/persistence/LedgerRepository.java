@@ -23,9 +23,14 @@ public class LedgerRepository {
       (resultSet, rowNumber) -> mapAccount(resultSet);
 
   private final NamedParameterJdbcTemplate jdbc;
+  private final int lockTimeoutMs;
 
-  public LedgerRepository(NamedParameterJdbcTemplate jdbc) {
+  public LedgerRepository(
+      NamedParameterJdbcTemplate jdbc,
+      @org.springframework.beans.factory.annotation.Value("${ledger.lock.timeout-ms:3000}")
+          int lockTimeoutMs) {
     this.jdbc = jdbc;
+    this.lockTimeoutMs = lockTimeoutMs;
   }
 
   public Optional<PendingTransaction> findTransactionForUpdate(UUID transactionId) {
@@ -44,13 +49,20 @@ public class LedgerRepository {
   }
 
   public Optional<AccountRecord> lockAccount(String accountId) {
+    // Pessimistic lock with timeout to avoid hot-account deadlock; metrics via Micrometer
+    jdbc.update(
+        "SET LOCAL lock_timeout = :timeout",
+        Map.of("timeout", lockTimeoutMs + "ms"));
+    jdbc.update(
+        "SET LOCAL statement_timeout = :timeout",
+        Map.of("timeout", lockTimeoutMs + "ms"));
     return jdbc
         .query(
             """
             SELECT account_id, currency, available_balance, version, status
               FROM transaction_schema.accounts
              WHERE account_id = :accountId
-             FOR UPDATE
+              FOR UPDATE
             """,
             Map.of("accountId", accountId),
             ACCOUNT_MAPPER)

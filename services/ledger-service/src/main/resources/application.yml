@@ -96,6 +96,8 @@ ledger:
     enabled: ${LEDGER_SECURITY_ENABLED:false}
   input-topic: ${LEDGER_INPUT_TOPIC:transactions.created.v1}
   outcome-topic: ${LEDGER_OUTCOME_TOPIC:transactions.committed.v1}
+  lock:
+    timeout-ms: ${LEDGER_LOCK_TIMEOUT_MS:3000}
   consumer:
     retry-interval-ms: ${LEDGER_RETRY_INTERVAL_MS:1000}
     max-attempts: ${LEDGER_MAX_ATTEMPTS:3}
