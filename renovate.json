@@ -1,0 +1,36 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "rangeStrategy": "pin",
+  "schedule": ["before 6am on Monday"],
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "matchManagers": ["dockerfile"],
+      "pinDigests": true,
+      "groupName": "docker base images"
+    },
+    {
+      "matchManagers": ["docker-compose"],
+      "pinDigests": true,
+      "groupName": "compose images"
+    },
+    {
+      "matchManagers": ["maven"],
+      "groupName": "maven dependencies"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "pinDigests": true,
+      "groupName": "github actions"
+    }
+  ],
+  "docker": {
+    "pinDigests": true
+  },
+  "enabledManagers": ["dockerfile", "docker-compose", "maven", "github-actions"],
+  "dependencyDashboard": true,
+  "vulnerabilityAlerts": {
+    "labels": ["security"]
+  }
+}

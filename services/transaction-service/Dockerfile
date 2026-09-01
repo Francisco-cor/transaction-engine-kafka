@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.6
-# Fase 8-2: distroless java21-debian12 nonroot + tini + HEALTHCHECK
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+# Fase 8-5: pinned digests for supply chain + renovate.json
+FROM maven:3.9.9-eclipse-temurin-21@sha256:3a4ab3276a087bf276f79cae96b1af04f53731bec53fb2e651aca79e4b10211e AS build
 WORKDIR /workspace
 COPY --link pom.xml .
 COPY --link libs/event-contracts/pom.xml libs/event-contracts/pom.xml
@@ -17,16 +17,14 @@ COPY --link libs/observability/src libs/observability/src
 COPY --link services/transaction-service/src services/transaction-service/src
 RUN --mount=type=cache,target=/root/.m2 mvn -B -ntp -pl services/transaction-service -am package -DskipTests
 
-FROM debian:bookworm-slim AS tini-stage
+FROM debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171 AS tini-stage
 RUN apt-get update && apt-get install -y --no-install-recommends tini && cp /usr/bin/tini /tini && chmod +x /tini
 
-FROM gcr.io/distroless/java21-debian12:nonroot
+FROM gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d
 WORKDIR /app
 COPY --from=tini-stage /tini /usr/bin/tini
 COPY --from=build /workspace/services/transaction-service/target/transaction-service-0.1.0-SNAPSHOT.jar app.jar
 USER nonroot:nonroot
 EXPOSE 8080
 ENTRYPOINT ["/usr/bin/tini", "--", "java", "-jar", "/app/app.jar"]
-# HEALTHCHECK documentado; en distroless sin shell/wget el probe real es K8s liveness/readiness httpGet /actuator/health.
-# Se mantiene metadata para compatibilidad con variante alpine y para auditoría de supply chain.
 HEALTHCHECK --interval=15s --timeout=3s --retries=3 --start-period=40s CMD wget -qO- http://localhost:8080/actuator/health || exit 1
