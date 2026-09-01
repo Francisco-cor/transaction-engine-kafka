@@ -74,10 +74,12 @@ public class TransactionRepository {
             """
             INSERT INTO transaction_schema.transactions (
                 transaction_id, idempotency_scope, idempotency_key, request_hash,
-                account_id, amount, currency, type, status
+                account_id, amount, currency, type, status,
+                idempotency_expires_at
             ) VALUES (
                 :transactionId, :scope, :key, :requestHash,
-                :accountId, :amount, :currency, :type, 'PENDING'
+                :accountId, :amount, :currency, :type, 'PENDING',
+                CURRENT_TIMESTAMP + INTERVAL '7 days'
             )
             ON CONFLICT (idempotency_scope, idempotency_key) DO NOTHING
             RETURNING transaction_id, idempotency_scope, idempotency_key, request_hash,

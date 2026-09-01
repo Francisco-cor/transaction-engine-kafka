@@ -147,11 +147,18 @@ public class TransactionApplicationService {
       throw new IllegalArgumentException("amount is required");
     }
     try {
-      return new CreateTransactionRequest(
-          requiredHeader(request.accountId(), "accountId"),
-          request.amount().setScale(4, RoundingMode.UNNECESSARY),
-          request.type(),
-          requiredHeader(request.currency(), "currency").toUpperCase());
+      var normalizedAmount = request.amount().setScale(4, RoundingMode.UNNECESSARY);
+      if (normalizedAmount.signum() <= 0) {
+        throw new IllegalArgumentException("amount must be positive");
+      }
+      // Enforce currency uppercase normalization and validate pattern after normalization
+      var rawCurrency = requiredHeader(request.currency(), "currency").toUpperCase();
+      if (!rawCurrency.matches("^[A-Z]{3}$")) {
+        throw new IllegalArgumentException("currency must be 3 uppercase letters (ISO 4217)");
+      }
+      // Account id trimming and length already validated; ensure no whitespace-only
+      var accountId = requiredHeader(request.accountId(), "accountId");
+      return new CreateTransactionRequest(accountId, normalizedAmount, request.type(), rawCurrency);
     } catch (ArithmeticException exception) {
       throw new IllegalArgumentException("amount supports at most four decimal places", exception);
     }

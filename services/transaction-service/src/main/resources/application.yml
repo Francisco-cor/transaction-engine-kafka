@@ -49,6 +49,8 @@ management:
       enabled: true
 
 transaction:
+  idempotency:
+    ttl-days: ${TRANSACTION_IDEMPOTENCY_TTL_DAYS:7}
   events:
     topic: ${TRANSACTION_CREATED_TOPIC:transactions.created.v1}
 

@@ -13,4 +13,6 @@ public record CreateTransactionRequest(
     @NotBlank @Size(max = 128) String accountId,
     @NotNull @DecimalMin(value = "0.0001") @Digits(integer = 15, fraction = 4) BigDecimal amount,
     @NotNull TransactionType type,
-    @NotBlank @Pattern(regexp = "[A-Z]{3}") String currency) {}
+    @NotBlank
+        @Pattern(regexp = "[a-zA-Z]{3}", message = "currency must be 3 letters (ISO 4217)")
+        String currency) {}
