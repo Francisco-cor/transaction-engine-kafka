@@ -11,6 +11,12 @@ spring:
   flyway:
     enabled: ${FLYWAY_ENABLED:false}
     locations: filesystem:${FLYWAY_MIGRATIONS_PATH:infra/postgres/migrations}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:}
+          jwk-set-uri: ${JWT_JWK_SET_URI:}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -62,6 +68,8 @@ management:
       application: ${spring.application.name}
 
 transaction:
+  security:
+    enabled: ${TRANSACTION_SECURITY_ENABLED:false}
   idempotency:
     ttl-days: ${TRANSACTION_IDEMPOTENCY_TTL_DAYS:7}
   events:
