@@ -18,3 +18,4 @@ Se usa Conventional Commits: `type(scope): summary`, por ejemplo `feat(ledger): 
 - Los cambios de esquema requieren migración versionada.
 - Las decisiones que afecten garantías, contratos, IDs, locking o infraestructura se registran en `docs/adr`.
 - Una tarea no se marca completa sin código, prueba y documentación verificable.
+- **PII / Datos sensibles:** nunca incluir `accountId` real, secretos (`*_dev` solo en `.env.example`), ni `POSTGRES_PASSWORD` en `reports/`, fixtures o logs. Toda evidencia en `docs/evidence/` y `reports/` es sintética (`demo-acc-001`, `hot-account-001`) y pasa `grep -R -i password reports/ || true`.
