@@ -1,0 +1,53 @@
+[
+  {
+    "name": "kafka",
+    "listen": "0.0.0.0:9093",
+    "upstream": "kafka:29092",
+    "enabled": true,
+    "toxics": [
+      {
+        "name": "latency_downstream",
+        "type": "latency",
+        "stream": "downstream",
+        "toxicity": 1.0,
+        "attributes": {
+          "latency": 200,
+          "jitter": 50
+        }
+      }
+    ]
+  },
+  {
+    "name": "postgres",
+    "listen": "0.0.0.0:5433",
+    "upstream": "postgres:5432",
+    "enabled": true,
+    "toxics": [
+      {
+        "name": "latency",
+        "type": "latency",
+        "stream": "downstream",
+        "toxicity": 0.5,
+        "attributes": {
+          "latency": 150,
+          "jitter": 30
+        }
+      }
+    ]
+  },
+  {
+    "name": "postgres_down",
+    "listen": "0.0.0.0:5434",
+    "upstream": "postgres:5432",
+    "enabled": false,
+    "toxics": [
+      {
+        "name": "down",
+        "type": "down",
+        "stream": "downstream",
+        "toxicity": 1.0,
+        "attributes": {}
+      }
+    ]
+  }
+]

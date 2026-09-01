@@ -1,0 +1,41 @@
+name: transaction-engine-chaos
+# Extends main compose with chaos harness: Toxiproxy for latency, Pumba for kill
+services:
+  toxiproxy:
+    image: shopify/toxiproxy:2.9.0
+    hostname: toxiproxy
+    ports:
+      - "8474:8474"
+      - "8475:8475"
+      - "9093:9093"  # proxy for kafka
+      - "5433:5433"  # proxy for postgres
+    volumes:
+      - ./proxy-config.json:/config/proxy-config.json:ro
+    command: -host=0.0.0.0 -config=/config/proxy-config.json
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8474/version || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - default
+
+  # Pumba chaos (container killer) — requires docker.sock mount on host
+  pumba:
+    image: gaiaadm/pumba:0.9.8
+    hostname: pumba
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: ["--debug", "--interval", "30s", "kill", "--signal", "SIGKILL", "re2:transaction-engine-kafka-ledger-service.*"]
+    profiles: ["pumba"]
+    depends_on:
+      - toxiproxy
+
+  # Optional: postgres via toxiproxy proxy (5433 -> postgres:5432)
+  # App services can be reconfigured to use toxiproxy host via env override:
+  # DB_URL=jdbc:postgresql://toxiproxy:5433/transactions
+  # KAFKA_BOOTSTRAP_SERVERS=toxiproxy:9093
+
+networks:
+  default:
+    name: transaction-engine-kafka_default
