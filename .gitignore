@@ -7,6 +7,7 @@ target/
 
 # Local planning artifact; keep the implementation roadmap out of the public repo.
 /IMPLEMENTATION_PLAN.md
+/PLAN_ELEVACION_11_FASES.md
 
 infra/docker-compose/.env
 docs/evidence/generated/
