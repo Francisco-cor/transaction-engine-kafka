@@ -9,7 +9,11 @@ spring:
     password: ${DB_PASSWORD:transaction_app_dev}
     hikari:
       connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:3000}
-      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      minimum-idle: 5
+      idle-timeout: 30000
+      max-lifetime: 600000
+      leak-detection-threshold: 2000
   data:
     redis:
       url: ${REDIS_URL:redis://:redis_dev@localhost:6379}

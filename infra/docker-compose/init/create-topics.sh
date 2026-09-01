@@ -4,6 +4,7 @@ set -Eeuo pipefail
 bootstrap_server="${KAFKA_BOOTSTRAP_SERVER:-kafka:29092}"
 topic_retention_ms="${TOPIC_RETENTION_MS:-604800000}"
 dlt_retention_ms="${DLT_RETENTION_MS:-1209600000}"
+partitions="${KAFKA_PARTITIONS:-6}"
 
 create_topic() {
   local topic="$1"
@@ -24,12 +25,13 @@ create_topic() {
     --add-config "retention.ms=$retention_ms,cleanup.policy=delete,min.insync.replicas=1"
 }
 
-create_topic "transactions.created.v1" 3 "$topic_retention_ms"
-create_topic "transactions.committed.v1" 3 "$topic_retention_ms"
-create_topic "transactions.created.v1.ledger-service.retry" 3 "$topic_retention_ms"
-create_topic "transactions.created.v1.ledger-service.DLT" 3 "$dlt_retention_ms"
-create_topic "transactions.fraud-decisions.v1" 3 "$topic_retention_ms"
-create_topic "transactions.created.v1.fraud-service.DLT" 3 "$dlt_retention_ms"
+create_topic "transactions.created.v1" "$partitions" "$topic_retention_ms"
+create_topic "transactions.committed.v1" "$partitions" "$topic_retention_ms"
+create_topic "transactions.created.v1.ledger-service.retry" "$partitions" "$topic_retention_ms"
+create_topic "transactions.created.v1.ledger-service.DLT" "$partitions" "$dlt_retention_ms"
+create_topic "transactions.fraud-decisions.v1" "$partitions" "$topic_retention_ms"
+create_topic "transactions.created.v1.fraud-service.DLT" "$partitions" "$dlt_retention_ms"
+create_topic "transactions.committed.v1.notification-service.DLT" "$partitions" "$dlt_retention_ms"
 
 echo 'Topics creados/verificados:'
 kafka-topics --bootstrap-server "$bootstrap_server" --list | sort

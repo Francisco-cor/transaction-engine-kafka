@@ -42,6 +42,7 @@ services:
     environment:
       TOPIC_RETENTION_MS: ${KAFKA_TOPIC_RETENTION_MS:-604800000}
       DLT_RETENTION_MS: ${KAFKA_DLT_RETENTION_MS:-1209600000}
+      KAFKA_PARTITIONS: ${KAFKA_PARTITIONS:-6}
     volumes:
       - ./init/create-topics.sh:/opt/init-topics/create-topics.sh:ro
     entrypoint: ["/bin/bash", "/opt/init-topics/create-topics.sh"]
