@@ -19,6 +19,7 @@
     <module>services/ledger-service</module>
     <module>services/fraud-service</module>
     <module>services/reconciliation-service</module>
+    <module>services/notification-service</module>
   </modules>
 
   <properties>
