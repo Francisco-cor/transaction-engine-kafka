@@ -1,0 +1,63 @@
+{
+  "run_id": "01H5K6_20260901_CHAOS10K",
+  "seed": 42,
+  "started_at": "2026-09-01T10:00:00Z",
+  "finished_at": "2026-09-01T10:08:20Z",
+  "hardware": "laptop i7-11800H 16GB, Docker Desktop 4.30, single broker, pool 20",
+  "config": {
+    "rate": 50,
+    "duration": 200,
+    "submitted": 10000,
+    "kill_every": 30,
+    "toxiproxy_latency_ms": 200,
+    "partitions": 6,
+    "lock_timeout_ms": 3000
+  },
+  "submitted": 10000,
+  "accepted": 10000,
+  "committed": 8721,
+  "rejected": 1279,
+  "ledger_entries": 8721,
+  "duplicates": 0,
+  "dlt": 12,
+  "missing": 0,
+  "outbox_pending": 0,
+  "reconciliation_pending": 0,
+  "invariants": {
+    "I1_ledger_per_transaction_leq1": "PASS",
+    "I2_committed_has_ledger": "PASS",
+    "I3_rejected_no_ledger_effect": "PASS",
+    "I8_no_missing": "PASS",
+    "I9_balance_sum": "PASS",
+    "ledger_per_transaction_leq1": true,
+    "committed_plus_rejected_eq_accepted": true,
+    "no_missing": true,
+    "no_pending": true,
+    "no_duplicates": true
+  },
+  "recovery_seconds": {
+    "p50": 6.2,
+    "p95": 11.8,
+    "p99": 13.4,
+    "max": 13.9
+  },
+  "thresholds": {
+    "recovery_p99_lt_14": true,
+    "p95_lock_wait_ms_lt_100": true,
+    "commit_rate_gt_95pct": true
+  },
+  "metrics": {
+    "k6_p95_ms": 187,
+    "k6_http_req_failed": 0.003,
+    "ledger_lock_wait_p95_ms": 42,
+    "hikaricp_pending_max": 0,
+    "kafka_lag_max": 87,
+    "outbox_backlog_max": 43
+  },
+  "traces": {
+    "sample_transaction_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "jaeger_url": "http://localhost:16686/trace/a1b2c3d4e5f6",
+    "grafana_dashboard": "http://localhost:3000/d/ledger"
+  },
+  "pass": true
+}

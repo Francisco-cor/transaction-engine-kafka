@@ -1,0 +1,37 @@
+@startuml C4 Transaction Engine
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+LAYOUT_WITH_LEGEND()
+
+title C4 — Financial Transaction & Reconciliation Platform (Portfolio-grade)
+
+Person(customer, "Cliente", "App / k6 50rps")
+System_Boundary(c1, "Platform") {
+  Container(gateway, "api-gateway:8085", "Spring Cloud Gateway, JWT, Bucket4j+Redis", "Seguridad, rate limiting 50rps, correlation")
+  Container(tx, "transaction-service:8080", "Spring Boot 3.4, Outbox, Hikari 20", "Idempotencia (scope,key)+hash, 202 Accepted")
+  ContainerDb(postgres, "PostgreSQL:5432", "NUMERIC(19,4), Flyway V1-V8", "Fuente verdad, ledger append-only")
+  ContainerQueue(kafka, "Kafka KRaft:9092", "6 partitions, zstd, acks all", "transactions.created.v1 key=accountId")
+  Container(ledger, "ledger-service:8082", "Consumer idempotente, FOR UPDATE, DLT", "Inbox dedup, lock 3s, outbox committed/rejected")
+  Container(fraud, "fraud-service:8083", "Reglas deterministas, Redis TTL 300s", "PASS/REVIEW/BLOCK, fallback PG")
+  Container(recon, "reconciliation-service:8084", "@Scheduled 2s, classifier", "MATCHED/MISSING/DUPLICATE/MISMATCH/PENDING")
+  Container(notif, "notification-service:8086", "Idempotente, retry 5, DLT", "Webhook fake, dedup transactionId")
+  ContainerQueue(dlt, "DLT topics", "*.DLT retry", "DeadLetterPublishingRecoverer")
+  Container(monitor, "Observabilidad", "OTel, Prometheus, Grafana, Jaeger", "host.docker.internal fixed → service DNS")
+}
+System_Ext(observability, "Grafana:3000 Prometheus:9090 Jaeger:16686", "Dashboards API/Kafka/Ledger/Chaos")
+
+Rel(customer, gateway, "POST /transactions Idempotency-Key", "HTTPS + JWT")
+Rel(gateway, tx, "route /transactions", "http")
+Rel(tx, postgres, "Tx + outbox 1Tx", "JDBC")
+Rel(tx, kafka, "publish transactions.created.v1", "KafkaAvro/JSON")
+Rel(kafka, ledger, "consume group ledger-service", "at-least-once, MANUAL_IMMEDIATE")
+Rel(ledger, postgres, "inbox+lock+ledger+outbox", "SELECT FOR UPDATE")
+Rel(kafka, fraud, "group fraud-service", "")
+Rel(fraud, postgres, "fraud_decisions UNIQUE", "")
+Rel(recon, postgres, "compare tx/ledger/fraud/outbox", "poll 2s")
+Rel(ledger, dlt, "poison → DLT", "headers exception_class")
+Rel(tx, monitor, "metrics/trace", "OTLP 4317")
+Rel(ledger, monitor, "", "")
+Rel_R(customer, observability, "trace_id", "Grafana")
+
+SHOW_LEGEND()
+@enduml

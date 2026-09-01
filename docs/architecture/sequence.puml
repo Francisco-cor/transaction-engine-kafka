@@ -1,0 +1,66 @@
+@startuml Sequence — POST /transactions to reconciliation
+autonumber
+actor Cliente
+participant "api-gateway\n:8085" as GW
+participant "transaction-service\n:8080" as TX
+database "PostgreSQL" as PG
+participant "Kafka\n:9092" as KAFKA
+participant "ledger-service\n:8082" as LEDGER
+participant "fraud-service\n:8083" as FRAUD
+participant "reconciliation\n:8084" as RECON
+participant "notification\n:8086" as NOTIF
+collections "DLT" as DLT
+
+Cliente -> GW : POST /transactions\nIdempotency-Key, X-Tenant-Id, Bearer
+GW -> GW : JWT SCOPE_transactions:write\nBucket4j 50rps + ownership
+GW -> TX : forward /transactions
+activate TX
+TX -> PG : BEGIN; INSERT transactions (scope,key,hash) IF ABSENT\nINSERT outbox_events (transactions.created.v1)
+TX -> PG : COMMIT
+TX --> Cliente : 202 Accepted {transactionId} + Location
+deactivate TX
+
+... Outbox publisher polling lease/claim 1s batch 50 ...
+
+TX -> KAFKA : publish transactions.created.v1\nkey=accountId headers traceparent
+
+par ledger vs fraud
+  KAFKA -> LEDGER : consume @KafkaListener MANUAL_IMMEDIATE
+  activate LEDGER
+  LEDGER -> PG : BEGIN; INSERT inbox_events\nIF DUPLICATE => DUPLICATE_COUNT++
+  LEDGER -> PG : SELECT ... FOR UPDATE account\nlock_timeout 3s
+  LEDGER -> PG : INSERT ledger_entries UNIQUE transactionId\nUPDATE accounts balance\nINSERT outbox committed/rejected\nCOMMIT
+  LEDGER -> LEDGER : ACK offset (only after COMMIT)
+  LEDGER -> DLT : poison => DeadLetterPublishingRecoverer\nheaders exception_class stack
+  deactivate LEDGER
+
+  KAFKA -> FRAUD : consume group fraud-service
+  activate FRAUD
+  FRAUD -> PG : inbox dedup + fraud_decisions UNIQUE\nRedis get (TTL 300s fallback PG)
+  FRAUD -> PG : INSERT outbox fraud-decisions.v1
+  deallocate
+end
+
+... Fraud outbox + Ledger outbox publish ...
+
+KAFKA -> RECON : @Scheduled 2s poll transaction/ledger/fraud/outbox
+activate RECON
+RECON -> PG : SELECT transaction, ledger, fraud, outbox\nclassifier MATCHED/MISSING/DUPLICATE/MISMATCH/PENDING
+RECON -> PG : INSERT reconciliation_results
+RECON --> Cliente : GET /reconciliation/{id} => MATCHED
+alt PENDING + admin replay
+  Cliente -> RECON : POST /reconciliation/{id}/replay\nSCOPE_admin:replay X-Replay-Reason
+  RECON -> PG : INSERT replay_audit
+  RECON -> RECON : dryRun ? no-Op : re-evaluate
+end
+deactivate RECON
+
+KAFKA -> NOTIF : transactions.committed.v1 group notification-service
+activate NOTIF
+NOTIF -> PG : inbox dedup + notifications UNIQUE\ntemplate + FakeProvider 50ms 5% fail
+NOTIF -> NOTIF : retry 5 exp backoff -> DLT
+NOTIF -> PG : metrics notifications_delivered
+deactivate NOTIF
+
+note over PG : Invariants verify-invariants.sql I1-I9\nI1 ledger per tx <=1, I2 committed==ledger, I8 no pending after stable
+@enduml
