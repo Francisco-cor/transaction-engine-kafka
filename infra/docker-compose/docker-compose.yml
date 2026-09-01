@@ -190,7 +190,7 @@ services:
       DB_USER: ${POSTGRES_APP_USER:-transaction_app}
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:}
+      NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:-}
 
   api-gateway:
     build:
