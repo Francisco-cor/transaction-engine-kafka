@@ -1,6 +1,6 @@
 POWERSHELL ?= powershell
 
-.PHONY: build test integration-test quality scan up down logs smoke inspect load chaos clean-data
+.PHONY: build test integration-test quality scan up down logs smoke inspect verify-invariants load chaos clean-data
 
 build:
 	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command build
@@ -31,6 +31,9 @@ smoke:
 
 inspect:
 	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command inspect
+
+verify-invariants:
+	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command verify-invariants
 
 load:
 	$(POWERSHELL) -NoProfile -File ./scripts/Invoke-Project.ps1 -Command load
