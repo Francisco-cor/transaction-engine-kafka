@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST controller for reconciliation queries and controlled replay.
+ */
 @RestController
 @RequestMapping("/reconciliation")
 public class ReconciliationController {
@@ -27,11 +30,26 @@ public class ReconciliationController {
     this.reconciliation = reconciliation;
   }
 
+  /**
+   * Gets reconciliation status for a transaction.
+   *
+   * @param transactionId transaction id
+   * @return reconciliation view
+   */
   @GetMapping("/{transactionId}")
   public ReconciliationResultView get(@PathVariable UUID transactionId) {
     return reconciliation.get(transactionId);
   }
 
+  /**
+   * Triggers controlled replay for a pending reconciliation (admin scope).
+   *
+   * @param transactionId transaction id
+   * @param reason replay reason header
+   * @param dryRun dry run flag
+   * @param jwt caller principal
+   * @return replay request
+   */
   @PostMapping("/{transactionId}/replay")
   @ResponseStatus(HttpStatus.ACCEPTED)
   @PreAuthorize("hasAuthority('SCOPE_admin:replay') or @securityChecker.isSecurityDisabled()")

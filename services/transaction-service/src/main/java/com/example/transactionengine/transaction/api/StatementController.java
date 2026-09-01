@@ -4,6 +4,11 @@ import com.example.transactionengine.transaction.persistence.StatementRepository
 import com.example.transactionengine.transaction.security.TenantOwnershipValidator;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
+/**
+ * Read-model controller for account statement projection.
+ */
 @RestController
 @RequestMapping("/accounts")
 public class StatementController {
@@ -16,6 +21,14 @@ public class StatementController {
     this.ownership = ownership;
   }
 
+  /**
+   * Returns current balance and recent ledger entries for an account.
+   *
+   * @param accountId account identifier
+   * @param tenantId tenant header
+   * @param limit max entries
+   * @return statement response
+   */
   @GetMapping("/{accountId}/statement")
   public StatementResponse statement(
       @PathVariable String accountId,

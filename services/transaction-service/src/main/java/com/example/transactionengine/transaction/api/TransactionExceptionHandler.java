@@ -17,21 +17,45 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+/**
+ * Central exception handler mapping domain and validation errors to ApiError responses.
+ */
 @RestControllerAdvice
 public class TransactionExceptionHandler {
 
+  /**
+   * Handles idempotency conflict (409).
+   *
+   * @param exception exception
+   * @param request http request
+   * @return error response
+   */
   @ExceptionHandler(IdempotencyConflictException.class)
   ResponseEntity<ApiError> handleConflict(
       IdempotencyConflictException exception, HttpServletRequest request) {
     return error(HttpStatus.CONFLICT, exception.getMessage(), request);
   }
 
+  /**
+   * Handles transaction not found (404).
+   *
+   * @param exception exception
+   * @param request http request
+   * @return error response
+   */
   @ExceptionHandler(TransactionNotFoundException.class)
   ResponseEntity<ApiError> handleNotFound(
       TransactionNotFoundException exception, HttpServletRequest request) {
     return error(HttpStatus.NOT_FOUND, exception.getMessage(), request);
   }
 
+  /**
+   * Handles validation errors (400).
+   *
+   * @param exception exception
+   * @param request http request
+   * @return error response
+   */
   @ExceptionHandler(MethodArgumentNotValidException.class)
   ResponseEntity<ApiError> handleValidation(
       MethodArgumentNotValidException exception, HttpServletRequest request) {
@@ -43,6 +67,13 @@ public class TransactionExceptionHandler {
     return error(HttpStatus.BAD_REQUEST, message, request);
   }
 
+  /**
+   * Handles bad request exceptions (400).
+   *
+   * @param exception exception
+   * @param request http request
+   * @return error response
+   */
   @ExceptionHandler({
     IllegalArgumentException.class,
     MissingRequestHeaderException.class,
@@ -53,18 +84,39 @@ public class TransactionExceptionHandler {
     return error(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
   }
 
+  /**
+   * Handles database unavailable (503).
+   *
+   * @param exception exception
+   * @param request http request
+   * @return error response
+   */
   @ExceptionHandler(DataAccessResourceFailureException.class)
   ResponseEntity<ApiError> handleDatabaseUnavailable(
       DataAccessResourceFailureException exception, HttpServletRequest request) {
     return error(HttpStatus.SERVICE_UNAVAILABLE, "Database is temporarily unavailable", request);
   }
 
+  /**
+   * Handles database errors (500).
+   *
+   * @param exception exception
+   * @param request http request
+   * @return error response
+   */
   @ExceptionHandler(DataAccessException.class)
   ResponseEntity<ApiError> handleDatabaseError(
       DataAccessException exception, HttpServletRequest request) {
     return error(HttpStatus.INTERNAL_SERVER_ERROR, "Database operation failed", request);
   }
 
+  /**
+   * Handles unexpected errors (500).
+   *
+   * @param exception exception
+   * @param request http request
+   * @return error response
+   */
   @ExceptionHandler(Exception.class)
   ResponseEntity<ApiError> handleUnexpected(Exception exception, HttpServletRequest request) {
     return error(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", request);

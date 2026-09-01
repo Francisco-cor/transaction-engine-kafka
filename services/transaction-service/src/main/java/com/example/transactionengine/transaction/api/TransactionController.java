@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST controller for transaction ingestion and query.
+ * Validates tenant ownership and delegates to transactional outbox service.
+ */
 @RestController
 @RequestMapping("/transactions")
 public class TransactionController {
@@ -29,6 +33,17 @@ public class TransactionController {
     this.ownership = ownership;
   }
 
+  /**
+   * Creates a transaction idempotently; returns 202 with Location.
+   *
+   * @param request request body
+   * @param idempotencyKey idempotency key
+   * @param tenantId tenant header
+   * @param correlationId optional correlation id
+   * @param traceparent optional W3C traceparent
+   * @param jwt authenticated principal
+   * @return 202 response
+   */
   @PostMapping
   public ResponseEntity<TransactionResponse> create(
       @Valid @RequestBody CreateTransactionRequest request,
@@ -60,6 +75,13 @@ public class TransactionController {
     return headerTenant != null ? headerTenant : "demo";
   }
 
+  /**
+   * Retrieves a transaction by id.
+   *
+   * @param transactionId transaction id
+   * @param correlationId optional correlation id
+   * @return transaction response
+   */
   @GetMapping("/{transactionId}")
   public TransactionResponse get(
       @PathVariable UUID transactionId,

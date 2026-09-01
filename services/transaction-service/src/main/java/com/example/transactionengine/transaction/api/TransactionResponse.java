@@ -7,6 +7,20 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * API response for a transaction including status and metadata.
+ *
+ * @param transactionId transaction id
+ * @param status status
+ * @param accountId account id
+ * @param amount amount
+ * @param currency currency
+ * @param type type
+ * @param reasonCode reason code
+ * @param createdAt created at
+ * @param updatedAt updated at
+ * @param correlationId correlation id
+ */
 public record TransactionResponse(
     UUID transactionId,
     TransactionStatus status,
@@ -19,6 +33,13 @@ public record TransactionResponse(
     Instant updatedAt,
     String correlationId) {
 
+  /**
+   * Builds response from domain record.
+   *
+   * @param transaction domain record
+   * @param correlationId correlation id
+   * @return response
+   */
   public static TransactionResponse from(TransactionRecord transaction, String correlationId) {
     return new TransactionResponse(
         transaction.transactionId(),
