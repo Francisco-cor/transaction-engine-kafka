@@ -1,0 +1,19 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+{{- range $component := list "transaction-service" "ledger-service" "fraud-service" "reconciliation-service" "notification-service" "api-gateway" }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "umbrella.fullname" $ }}-{{ $component }}
+  labels:
+    {{- include "umbrella.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  maxUnavailable: {{ $.Values.podDisruptionBudget.maxUnavailable }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "umbrella.name" $ }}
+      app.kubernetes.io/component: {{ $component }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+{{- end }}
+{{- end }}
