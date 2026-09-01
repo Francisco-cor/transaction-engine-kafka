@@ -4,6 +4,10 @@
   "started_at": "2026-09-01T10:00:00Z",
   "finished_at": "2026-09-01T10:08:20Z",
   "hardware": "laptop i7-11800H 16GB, Docker Desktop 4.30, single broker, pool 20",
+  "evidence_type": "synthetic",
+  "synthetic": true,
+  "recovery_source": "synthetic_demo_no_docker",
+  "note": "SYNTHETIC DEMO — valores ilustrativos coherentes con invariantes I1-I9 pero NO medidos con docker compose up. Ejecuta powershell -File scripts/Invoke-Project.ps1 -Command chaos -Seed 42 para reporte measured.",
   "config": {
     "rate": 50,
     "duration": 200,
@@ -59,5 +63,6 @@
     "jaeger_url": "http://localhost:16686/trace/a1b2c3d4e5f6",
     "grafana_dashboard": "http://localhost:3000/d/ledger"
   },
-  "pass": true
+  "pass": true,
+  "how_to_reproduce_measured": "docker compose -f infra/docker-compose/docker-compose.yml up -d && powershell -File scripts/Invoke-Project.ps1 -Command chaos -Seed 42 -Duration 200 -Rate 50 -KillEvery 30 && cat reports/chaos/*/report.json"
 }

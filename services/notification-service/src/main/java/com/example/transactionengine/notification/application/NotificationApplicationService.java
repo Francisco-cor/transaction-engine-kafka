@@ -26,6 +26,10 @@ public class NotificationApplicationService {
   private final WebhookClient webhookClient;
   private final MeterRegistry meterRegistry;
   private final ObjectMapper objectMapper;
+  private final Counter deliveredSent;
+  private final Counter deliveredRetryable;
+  private final Counter deliveredDlt;
+  private final Counter templateRendered;
 
   public NotificationApplicationService(
       InboxRepository inbox,
@@ -42,6 +46,11 @@ public class NotificationApplicationService {
     this.webhookClient = webhookClient;
     this.meterRegistry = meterRegistry;
     this.objectMapper = objectMapper;
+    // Pre-register counters once to avoid meter leak per call (Fase 8 hardening)
+    this.deliveredSent = Counter.builder("notifications_delivered").tag("status", "sent").register(meterRegistry);
+    this.deliveredRetryable = Counter.builder("notifications_delivered").tag("status", "retryable_failed").register(meterRegistry);
+    this.deliveredDlt = Counter.builder("notifications_delivered").tag("status", "dlt").register(meterRegistry);
+    this.templateRendered = Counter.builder("notifications_template_rendered").register(meterRegistry);
   }
 
   @Transactional
@@ -74,20 +83,20 @@ public class NotificationApplicationService {
         webhookClient.deliver(transactionId, accountId, message);
         notifications.markSent(transactionId);
         inbox.markProcessed(eventId);
-        Counter.builder("notifications_delivered").tag("status", "sent").register(meterRegistry).increment();
-        Counter.builder("notifications_template_rendered").register(meterRegistry).increment();
+        deliveredSent.increment();
+        templateRendered.increment();
         LOG.info("Notification delivered tx={} account={} msg={}", transactionId, accountId, message);
         return "SENT";
       } catch (Exception ex) {
         if (ex instanceof FakeNotificationProvider.RetryableNotificationException) {
           notifications.markFailed(transactionId, ex.getMessage(), 1);
           inbox.markProcessed(eventId);
-          Counter.builder("notifications_delivered").tag("status", "retryable_failed").register(meterRegistry).increment();
+          deliveredRetryable.increment();
           throw new RetryableNotificationException(ex.getMessage(), ex);
         } else {
           notifications.markDlt(transactionId, ex.getMessage());
           inbox.markProcessed(eventId);
-          Counter.builder("notifications_delivered").tag("status", "dlt").register(meterRegistry).increment();
+          deliveredDlt.increment();
           throw new PermanentNotificationException(ex.getMessage(), ex);
         }
       }

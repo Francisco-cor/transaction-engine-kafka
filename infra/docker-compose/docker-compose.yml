@@ -110,6 +110,9 @@ services:
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       OUTBOX_PUBLISHER_ENABLED: "true"
+      TRANSACTION_SECURITY_ENABLED: ${TRANSACTION_SECURITY_ENABLED:-false}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI:-}
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-}
 
   ledger-service:
     build:
@@ -209,7 +212,9 @@ services:
       GATEWAY_RECONCILIATION_SERVICE_URI: http://reconciliation-service:8084
       REDIS_HOST: redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_dev}
-      GATEWAY_SECURITY_ENABLED: "false"
+      GATEWAY_SECURITY_ENABLED: ${GATEWAY_SECURITY_ENABLED:-false}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI:-}
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
 
   redis:

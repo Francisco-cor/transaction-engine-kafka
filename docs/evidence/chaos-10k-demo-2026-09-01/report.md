@@ -1,15 +1,16 @@
-# Evidence — Chaos 10k Demo 2026-09-01
+# Evidence — Chaos 10k Demo 2026-09-01 — SYNTHETIC DEMO
 
-> run-id `01H5K6_20260901_CHAOS10K` seed `42` | `reports/chaos/01H5K6_20260901_CHAOS10K/report.json`
+> **SYNTHETIC — no medido con docker compose up.** run-id `01H5K6_20260901_CHAOS10K` seed `42` | `reports/chaos/01H5K6_20260901_CHAOS10K/report.json` | `evidence_type: synthetic` | Para evidencia medida ejecuta `powershell -File scripts/Invoke-Project.ps1 -Command chaos -Seed 42` con `docker compose up -d` y revisa `reports/chaos/{run-id}/report.json` (`evidence_type: measured`).
 
-## Resumen
+## Resumen — SYNTHETIC (valores ilustrativos coherentes con I1-I9, no medidos)
 
-- **Hardware:** laptop i7-11800H 16GB, Docker Desktop 4.30, single broker KRaft 7.7.1, `Hikari 20`, `KAFKA_PARTITIONS 6`, `lock_timeout 3s`
-- **Carga:** `k6` 50 rps × 200 s = `10 000 submitted`, 20 VUs, Zipf hot `hot-account-001` 50%, 5% body mismatch 409
-- **Chaos:** `Toxiproxy` latency 200 ms jitter 50, `pumba` kill `ledger-service` cada 30 s, `suite.py --seed 42 --kill-every 30`
-- **Resultado:** `accepted 10000, committed 8721 + rejected 1279 = accepted`, `ledger_entries 8721 == committed`, `duplicates 0`, `missing 0`, `DLT 12` (poison), `outbox_pending 0`, `reconciliation_pending 0` → **PASS**
-- **Recovery:** desde último kill hasta backlog estable `p50 6.2s p95 11.8s p99 13.4s ≤14s` → **PASS**
+- **Hardware (referencia):** laptop i7-11800H 16GB, Docker Desktop 4.30, single broker KRaft 7.7.1, `Hikari 20`, `KAFKA_PARTITIONS 6`, `lock_timeout 3s`
+- **Carga (teórica):** `k6` 50 rps × 200 s = `10 000 submitted`, 20 VUs, Zipf hot `hot-account-001` 50%, 5% body mismatch 409
+- **Chaos (teórico):** `Toxiproxy` latency 200 ms jitter 50, `pumba` kill `ledger-service` cada 30 s, `suite.py --seed 42 --kill-every 30`
+- **Resultado (sintético):** `accepted 10000, committed 8721 + rejected 1279 = accepted`, `ledger_entries 8721 == committed`, `duplicates 0`, `missing 0`, `DLT 12` (poison), `outbox_pending 0`, `reconciliation_pending 0` → **PASS** — ver `verify-invariants.sql` y `LoadInvariantsTest` para invariantes reales
+- **Recovery (sintético):** desde último kill hasta backlog estable `p50 6.2s p95 11.8s p99 13.4s ≤14s` → **PASS** — en run `measured` `recovery_source` será `stable_elapsed` o `prometheus query_range` (`chaos/suite.py:170`)
 - **Integridad:** `verify-invariants.sql` I1-I9 verde, `balance_final == balance_inicial + sum(ledger)` ver `LoadInvariantsTest`
+- **Nota:** Este `report.json` es `evidence_type: synthetic` para portfolio sin requerir 10k reais en cada clon. El `benchmark.sh`/`suite.py` ahora detectan `synthetic=true` si `docker compose exec postgres` falla y marcan `recovery_source: synthetic_fallback_no_db`.
 
 ```json
 {

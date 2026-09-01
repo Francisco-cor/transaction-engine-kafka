@@ -5,6 +5,16 @@ Estado: aceptado | Fase: 8 hardening | Rel: docs/security/threat-model.md, infra
 ## Local
 
 - `infra/docker-compose/.env` is gitignored (`.gitignore:11`). Copy from `.env.example` and never commit. `.env.example` values end with `_dev` and are not production.
+- **Seguridad local desactivada por defecto:** `GATEWAY_SECURITY_ENABLED=false` y `TRANSACTION_SECURITY_ENABLED=false` en `infra/docker-compose/docker-compose.yml:212` para dx <15 min. Para probar `401/403/429` y `tenant isolation` (`threat-model.md:34`), activa en `.env`:
+
+  ```env
+  GATEWAY_SECURITY_ENABLED=true
+  TRANSACTION_SECURITY_ENABLED=true
+  JWT_ISSUER_URI=http://mock-issuer:8080
+  # usa JwtDecoder fake en tests o genera token con claim tenant=demo scope=transactions:write
+  docker compose -f infra/docker-compose/docker-compose.yml up -d
+  curl -s http://localhost:8080/transactions -H "Authorization: Bearer bad" | grep 401
+  ```
 - `infra/docker-compose/secrets/` is also gitignored; preferred for Swarm/K8s is Docker secrets files per service:
 
   ```yaml

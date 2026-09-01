@@ -19,13 +19,13 @@ powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command inspect
 
 También `make build up smoke chaos`.
 
-**Salida esperada chaos 10k** (`docs/evidence/chaos-10k-demo-2026-09-01/report.json:1`):
+**Salida esperada chaos 10k** (`docs/evidence/chaos-10k-demo-2026-09-01/report.json:1` — `evidence_type: synthetic` demo, sin docker):
 
 ```json
-{"submitted":10000,"accepted":10000,"committed":8721,"rejected":1279,"ledger_entries":8721,"duplicates":0,"missing":0,"dlt":12,"recovery_seconds":{"p99":13.4}}
+{"submitted":10000,"accepted":10000,"committed":8721,"rejected":1279,"ledger_entries":8721,"duplicates":0,"missing":0,"dlt":12,"recovery_seconds":{"p99":13.4},"evidence_type":"synthetic"}
 ```
 
-`pass:true` + `recovery p99 ≤14s` + `verify-invariants` I1-I9 verde = exactly-once de negocio demostrado.
+`pass:true` + `recovery p99 ≤14s` + `verify-invariants` I1-I9 verde = exactly-once de negocio demostrado. Para **evidencia medida** (`evidence_type: measured`, `recovery_source: stable_elapsed`) ejecuta `chaos` con `docker compose up -d` — ver `docs/evidence/chaos-10k-demo-2026-09-01/report.md:1`.
 
 ## Requisitos
 
@@ -103,11 +103,11 @@ terraform -chdir=infra/terraform/envs/dev plan   # S3 + Dynamo lock
 - **Poison → DLT** — `exception_class, failure_count, first_failure_at, payload_hash` + consumer sigue
 - **DB caída → backpressure** — `ExponentialBackOff jitter 0.2`, CircuitBreaker 50%/30s, Bulkhead 20, readiness falla si DB/Kafka down
 - **Dos débitos concurrentes serializados** — `SELECT FOR UPDATE` + `lock_timeout 3s` p95 42ms, test `LedgerConcurrentBalanceIntegrationTest`
-- **Schema v2 coexiste con v1** — `customerNote` nullable default null, `auto.register.schemas=false` BACKWARD, `FAIL_ON_UNKNOWN=false`
+- **Schema v2 coexiste con v1** — `customerNote` nullable default null, `auto.register.schemas=false` BACKWARD, `FAIL_ON_UNKNOWN=false` (runtime JSON tolerante; Avro es contrato build-time `libs/event-contracts/src/main/avro/*.avsc`, ver `ADR-008`)
 - **Trace distribuido** — `traceparent` en HTTP + Kafka headers, `MdcFilter`, OTLP Jaeger, logs JSON MDC `transaction_id/trace_id`
 - **Notificación no revierte ledger** — `notifications.transaction_id UNIQUE`, retry finito 5 + DLT + `notifications_delivered`
 
-Limitaciones honestas: single broker local `min.insync.replicas=1` no tolera pérdida disco; hot account ~15 TPS serializado (ADR-009); DLT retención 14d requiere replay humano auditado; distroless `HEALTHCHECK wget` es metadata, health real K8s `httpGet /actuator/health/{liveness,readiness}`.
+Limitaciones honestas: single broker local `min.insync.replicas=1` no tolera pérdida disco; hot account ~15 TPS serializado (ADR-009); DLT retención 14d requiere replay humano auditado; health real es K8s `httpGet /actuator/health/{liveness,readiness}` (distroless sin `HEALTHCHECK` wget). **Seguridad local desactivada por defecto** (`GATEWAY_SECURITY_ENABLED=false`, `TRANSACTION_SECURITY_ENABLED=false`) para dx <15 min; para probar JWT/429 activa `GATEWAY_SECURITY_ENABLED=true` + `JWT_ISSUER_URI` mock — ver `infra/docker-compose/.env.example:17` y `docs/security/threat-model.md:34`.
 
 ## Capacidad (F7)
 

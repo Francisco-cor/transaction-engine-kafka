@@ -13,9 +13,10 @@ que permita `producer v2 + consumer v1` durante rolling update.
 
 ## Decisión
 
-1. **Formato:** Avro con Schema Registry (Confluent 7.7.1) para validación estática; JSON sigue siendo
-   el `content_type` por defecto en local por simplicidad, pero la fuente de verdad son los `.avsc`
-   en `libs/event-contracts/src/main/avro/`.
+1. **Formato:** Avro como contrato build-time (fuente de verdad `.avsc` en `libs/event-contracts/src/main/avro/`)
+   validado en CI; **runtime actual es JSON** con `value-serializer: StringSerializer` y `header schema_version`
+   por simplicidad local (`services/transaction-service/src/main/resources/application.yml:36`).
+   Migración a `KafkaAvroSerializer` es opt-in documentada, no activa por defecto en `v0.5.0`.
 2. **Compatibilidad:** `BACKWARD` para todos los subjects (`transactions.created`, `transactions.committed`,
    `fraud-decisions`). Campos nuevos **obligatoriamente** opcionales con `default` o `union ["null", type]`.
 3. **Reglas:**
@@ -50,6 +51,7 @@ que permita `producer v2 + consumer v1` durante rolling update.
 
 ## Validación
 
-- `AvroCompatibilityTest` + `SchemaCoexistenceTest` verde en `mvn verify`.
-- Smoke `POST /transactions` con `customerNote` acepta 202 y ledger/fraud lo procesan como `COMMITTED` sin ver nota.
-- `docker compose exec schema-registry curl /subjects/transactions.created.v1/versions/latest` muestra `BACKWARD`.
+- `AvroCompatibilityTest` + `SchemaCoexistenceTest` verde en `mvn verify` (contrato Avro build-time).
+- Smoke `POST /transactions` con `customerNote` acepta 202 y ledger/fraud lo procesan como `COMMITTED` sin ver nota (JSON tolerante `FAIL_ON_UNKNOWN=false` + `validateEvent` 1|2).
+- `docker compose exec schema-registry curl /subjects/transactions.created.v1/versions/latest` muestra `BACKWARD` cuando se activa Avro.
+- **Estado v0.5.0:** `TransactionApplicationService.java:90` emite JSON con `schema_version=2` si `customerNote != null`; consumers ignoran campo desconocido. Avro `use.latest.version` preparado pero no wireado en runtime para evitar break local sin `schema-registry` en todos los envs.

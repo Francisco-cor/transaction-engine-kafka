@@ -1,5 +1,6 @@
 package com.example.transactionengine.ledger.messaging;
 
+import com.example.transactionengine.ledger.metrics.LedgerMetrics;
 import com.example.transactionengine.ledger.persistence.ClaimedOutboxEvent;
 import com.example.transactionengine.ledger.persistence.OutboxRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -8,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +30,7 @@ public class LedgerOutboxPublisher {
   private final OutboxRepository outbox;
   private final KafkaTemplate<String, String> kafkaTemplate;
   private final ObjectMapper objectMapper;
+  private final LedgerMetrics metrics;
   private final String topic;
   private final int batchSize;
   private final int leaseSeconds;
@@ -39,6 +42,7 @@ public class LedgerOutboxPublisher {
       OutboxRepository outbox,
       KafkaTemplate<String, String> kafkaTemplate,
       ObjectMapper objectMapper,
+      LedgerMetrics metrics,
       @Value("${ledger.outcome-topic:transactions.committed.v1}") String topic,
       @Value("${ledger.outbox.batch-size:50}") int batchSize,
       @Value("${ledger.outbox.lease-seconds:30}") int leaseSeconds,
@@ -47,6 +51,7 @@ public class LedgerOutboxPublisher {
     this.outbox = outbox;
     this.kafkaTemplate = kafkaTemplate;
     this.objectMapper = objectMapper;
+    this.metrics = metrics;
     this.topic = topic;
     this.batchSize = batchSize;
     this.leaseSeconds = leaseSeconds;
@@ -57,7 +62,14 @@ public class LedgerOutboxPublisher {
   @Scheduled(fixedDelayString = "${ledger.outbox.poll-delay-ms:1000}")
   public void publishDueEvents() {
     try {
-      outbox.claim(batchSize, owner, leaseSeconds, topic).forEach(this::publish);
+      var claimed = outbox.claim(batchSize, owner, leaseSeconds, topic);
+      // Update outbox backlog gauge for Grafana (ledger.json panel)
+      try {
+        metrics.setOutboxBacklog(outbox.countPending(topic));
+      } catch (Exception ignore) {
+        // countPending optional; gauge remains last value
+      }
+      claimed.forEach(this::publish);
     } catch (RuntimeException exception) {
       LOGGER.warn("Ledger outbox claim failed; the next poll will retry", exception);
     }
@@ -91,7 +103,10 @@ public class LedgerOutboxPublisher {
   private long nextBackoff(int attempts) {
     var exponent = Math.min(attempts, 30);
     var multiplier = 1L << exponent;
-    return Math.min(maxBackoffSeconds, Math.max(1, baseBackoffSeconds * multiplier));
+    var base = Math.min(maxBackoffSeconds, Math.max(1, baseBackoffSeconds * multiplier));
+    // jitter 0.2 like ledger consumer backoff (ADR-006) to avoid thundering herd
+    double jitter = 1.0 + ThreadLocalRandom.current().nextDouble(-0.2, 0.2);
+    return Math.max(1, Math.round(base * jitter));
   }
 
   private static Throwable unwrap(Throwable throwable) {

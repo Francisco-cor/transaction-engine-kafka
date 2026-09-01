@@ -11,12 +11,12 @@ global:
 replicaCount: 1
 
 images:
-  transactionService: "transaction-service:0.1.0-SNAPSHOT"
-  ledgerService: "ledger-service:0.1.0-SNAPSHOT"
-  fraudService: "fraud-service:0.1.0-SNAPSHOT"
-  reconciliationService: "reconciliation-service:0.1.0-SNAPSHOT"
-  notificationService: "notification-service:0.1.0-SNAPSHOT"
-  apiGateway: "api-gateway:0.1.0-SNAPSHOT"
+  transactionService: "transaction-service:0.5.0"
+  ledgerService: "ledger-service:0.5.0"
+  fraudService: "fraud-service:0.5.0"
+  reconciliationService: "reconciliation-service:0.5.0"
+  notificationService: "notification-service:0.5.0"
+  apiGateway: "api-gateway:0.5.0"
   flyway: "flyway/flyway:10.17.0-alpine"
 
 service:

@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.5.1 — 2026-09-01 — Críticos y altos (post-sondeo)
+
+> Fixes tras sondeo completo 11 fases: synthetic evidence honesto, exporters overlay, seguridad enable path, Avro runtime aclarado, bump 0.5.0, distroless sin HEALTHCHECK, métricas sin leak.
+
+### Fixed
+
+- **C1 Chaos** `chaos/suite.py:145` elimina `*0.6/*0.9` fake → `stable_elapsed` + `query_range` Prometheus; `synthetic` flag y `evidence_type`/`recovery_source`; `benchmark.sh/ps1` ya no 100 fijo → `rate*duration` throttled 1k
+- **C1 Evidence** `docs/evidence/.../report.json:6` `evidence_type: synthetic` + `synthetic:true` + `note`; `report.md:1` header SYNTHETIC DEMO con cómo reproducir `measured`
+- **C2 Observabilidad** `infra/observability/prometheus.yml:44` comentario overlay + `infra/docker-compose/docker-compose.exporters.yml:1` postgres/redis exporters opcionales (compose valida)
+- **C3 Seguridad** `infra/docker-compose/docker-compose.yml:212` `GATEWAY_SECURITY_ENABLED=${...:-false}` + `TRANSACTION_SECURITY_ENABLED` + `JWT_ISSUER_URI` passthrough; `infra/docker-compose/.env.example:17` doc enable path; `docs/security/secrets.md` + `README.md:110` LIMITACIONES honestas
+- **H4 Esquemas** `services/transaction-service/.../application.yml:36` runtime JSON documentado, Avro build-time; `docs/adr/ADR-008` decisión corregida (runtime JSON)
+- **H5 Versiones** `pom.xml:9` `0.1.0-SNAPSHOT→0.5.0` + 8 poms hijos + 6 Dockerfiles + `infra/helm/...Chart.yaml/values.yaml` cohérente con tag `v0.5.0`
+- **H6 Supply Chain** 6 `Dockerfile:30` quita `HEALTHCHECK wget` imposible en distroless → comentario `# no HEALTHCHECK` + K8s probes; `docs/security/threat-model.md:64` actualizado
+- **H7 Métricas** `NotificationApplicationService.java:30` counters pre-registrados (no `Counter.builder` por llamada) + `LedgerOutboxPublisher.java:57` actualiza `LedgerMetrics.setOutboxBacklog(countPending)` + `OutboxRepository.java:112` `countPending()` + jitter `0.2` en `nextBackoff` ambos publishers
+
 ## v0.5.0 — 2026-09-01 — Portfolio-ready (F11)
 
 > 11 fases elevadas, 60+ commits, evidence 10k chaos reproducible.

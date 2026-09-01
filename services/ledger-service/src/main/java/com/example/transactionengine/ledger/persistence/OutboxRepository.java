@@ -102,4 +102,16 @@ public class OutboxRepository {
             .addValue("delaySeconds", delaySeconds)
             .addValue("error", error));
   }
+
+  public long countPending(String topic) {
+    var count =
+        jdbc.queryForObject(
+            """
+            SELECT count(*) FROM transaction_schema.outbox_events
+             WHERE topic = :topic AND status IN ('PENDING','CLAIMED','FAILED')
+            """,
+            Map.of("topic", topic),
+            Long.class);
+    return count == null ? 0 : count;
+  }
 }

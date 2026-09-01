@@ -1,0 +1,44 @@
+# Overlay para exporters opcionales — no se carga por defecto para mantener `docker compose up -d` ligero.
+# Uso: docker compose -f infra/docker-compose/docker-compose.yml -f infra/docker-compose/docker-compose.exporters.yml up -d
+# O con observabilidad completa: docker compose -f infra/docker-compose/docker-compose.yml -f infra/docker-compose/docker-compose.exporters.yml -f chaos/docker-compose.chaos.yml up -d
+services:
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    # digest pin pendiente renovate pinDigests; tag v0.15.0 verificado 2026-09
+    hostname: postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_APP_USER:-transaction_app}:${POSTGRES_APP_PASSWORD:-transaction_app_dev}@postgres:5432/${POSTGRES_DB:-transactions}?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9187/metrics || exit 1"]
+      interval: 10s
+      retries: 6
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    hostname: redis-exporter
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-redis_dev}"
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9121/metrics || exit 1"]
+      interval: 10s
+      retries: 6
+    restart: unless-stopped
+
+  # kafka-jmx-exporter opcional — requiere JMX en broker; en KRaft local se omite por defecto.
+  # Descomentar si se habilita JMX en kafka: KAFKA_JMX_PORT=9308
+  # kafka-jmx-exporter:
+  #   image: bitnami/jmx-exporter:0.20.0
+  #   hostname: kafka-jmx-exporter
+  #   ports: ["9308:9308"]

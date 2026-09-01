@@ -23,8 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends tini && cp /usr
 FROM gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d
 WORKDIR /app
 COPY --from=tini-stage /tini /usr/bin/tini
-COPY --from=build /workspace/services/transaction-service/target/transaction-service-0.1.0-SNAPSHOT.jar app.jar
+COPY --from=build /workspace/services/transaction-service/target/transaction-service-0.5.0.jar app.jar
 USER nonroot:nonroot
 EXPOSE 8080
 ENTRYPOINT ["/usr/bin/tini", "--", "java", "-jar", "/app/app.jar"]
-HEALTHCHECK --interval=15s --timeout=3s --retries=3 --start-period=40s CMD wget -qO- http://localhost:8080/actuator/health || exit 1
+# no HEALTHCHECK: distroless has no wget/curl; health is via K8s liveness/readiness probes and compose healthcheck via actuator

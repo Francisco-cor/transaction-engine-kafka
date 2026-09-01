@@ -40,6 +40,8 @@ scrape_configs:
     static_configs:
       - targets: ["api-gateway:8085"]
 
+  # Exporters opcionales — habilita con: docker compose -f infra/docker-compose/docker-compose.yml -f infra/docker-compose/docker-compose.exporters.yml up -d
+  # Por defecto estos targets fallan scrape hasta que se levanten los exporters; no bloquea el resto de métricas.
   - job_name: postgres
     metrics_path: /metrics
     static_configs:

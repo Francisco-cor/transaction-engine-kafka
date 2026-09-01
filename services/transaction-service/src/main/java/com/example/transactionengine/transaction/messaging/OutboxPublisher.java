@@ -92,7 +92,9 @@ public class OutboxPublisher {
   private long nextBackoff(int attempts) {
     var exponent = Math.min(attempts, 30);
     var multiplier = 1L << exponent;
-    return Math.min(maxBackoffSeconds, Math.max(1, baseBackoffSeconds * multiplier));
+    var base = Math.min(maxBackoffSeconds, Math.max(1, baseBackoffSeconds * multiplier));
+    double jitter = 1.0 + java.util.concurrent.ThreadLocalRandom.current().nextDouble(-0.2, 0.2);
+    return Math.max(1, Math.round(base * jitter));
   }
 
   private static Throwable unwrap(Throwable throwable) {

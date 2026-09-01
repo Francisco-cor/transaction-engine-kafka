@@ -34,6 +34,9 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Runtime actual: JSON StringSerializer con header schema_version (ver ADR-008).
+      # Avro es contrato build-time (libs/event-contracts/src/main/avro/*.avsc + SchemaCompatibilityTest).
+      # Para activar Avro real: value-serializer=io.confluent.kafka.serializers.KafkaAvroSerializer + specific.avro.reader=true
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       properties:
         enable.idempotence: true
@@ -42,8 +45,6 @@ spring:
         schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
         auto.register.schemas: false
         use.latest.version: true
-        # For Avro migration, switch to:
-        # value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
     consumer:
       properties:
         schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}

@@ -61,7 +61,7 @@ Relacionado: docs/security/secrets.md, ADR-002 exactly-once, ADR-006 DLT, docs/a
 ## 6. Riesgo residual y próximos pasos
 
 - Hot account limita throughput a ~20 TPS/cuenta caliente con lock 50ms; mitigar con sharding por hash o optimistic si `ledger_lock_wait_seconds p95>100ms` sostenido (K8s HPA KEDA lag>100 ya en F9).
-- Distroless `HEALTHCHECK` no ejecuta `wget` (sin shell); health real es K8s `liveness /actuator/health/liveness, readiness /actuator/health/readiness` + compose healthcheck vía `api-gateway` HTTP.
+- Distroless sin `HEALTHCHECK` (no wget/curl en imagen); health real es K8s `liveness /actuator/health/liveness, readiness /actuator/health/readiness` + compose `healthcheck` vía `api-gateway` HTTP (ver `Dockerfile:24` comentario).
 - tini no es necesario si `shareProcessNamespace` en K8s, pero se mantiene para compose signal reap.
 - Cosign firma opcional; próxima fase añade `policy-controller` verification.
 
