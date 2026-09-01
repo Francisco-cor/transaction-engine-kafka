@@ -7,6 +7,11 @@ metadata:
     app.kubernetes.io/component: ledger-service
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "umbrella.name" . }}
@@ -19,8 +24,27 @@ spec:
         app.kubernetes.io/component: ledger-service
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      terminationGracePeriodSeconds: 45
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/component: ledger-service
+                    app.kubernetes.io/instance: {{ .Release.Name }}
+                topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: ledger-service
+              app.kubernetes.io/instance: {{ .Release.Name }}
       containers:
         - name: ledger-service
           image: "{{ .Values.images.ledgerService }}"
@@ -56,6 +80,10 @@ spec:
                   name: {{ include "umbrella.fullname" . }}-dev-secrets
                   key: DB_PASSWORD
             {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "10"]
           livenessProbe:
             httpGet:
               path: {{ .Values.probes.liveness.path }}
