@@ -1,0 +1,6 @@
+aws_region         = "us-east-1"
+vpc_cidr           = "10.2.0.0/16"
+kubernetes_version = "1.29"
+node_instance_types = ["t3.medium"]
+desired_size       = 2
+# demo is ephemeral; can be destroyed and recreated per docs/operations/cost.md teardown policy

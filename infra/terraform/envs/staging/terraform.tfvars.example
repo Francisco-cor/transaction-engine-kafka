@@ -1,0 +1,7 @@
+aws_region         = "us-east-1"
+vpc_cidr           = "10.1.0.0/16"
+kubernetes_version = "1.29"
+node_instance_types = ["t3.large"]
+desired_size       = 3
+rds_instance_class = "db.t3.small"
+# staging is destroyable: terraform destroy -target=module.vpc is blocked by prevent_destroy false; prod would be true

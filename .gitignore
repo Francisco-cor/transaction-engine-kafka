@@ -17,3 +17,14 @@ reports/
 *.log
 hs_err_pid*
 
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+.terraform.tfstate.lock.info
+infra/terraform/.terraform/
+infra/terraform/envs/*/.terraform/
+

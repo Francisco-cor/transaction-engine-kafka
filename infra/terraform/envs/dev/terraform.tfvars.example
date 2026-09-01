@@ -1,0 +1,8 @@
+aws_region         = "us-east-1"
+vpc_cidr           = "10.0.0.0/16"
+kubernetes_version = "1.29"
+node_instance_types = ["t3.medium"]
+desired_size       = 2
+rds_instance_class = "db.t3.micro"
+# No secrets here — DB password is managed via RDS manage_master_user_password + Secrets Manager
+# Override via env vars TF_VAR_xxx or secrets manager, never plain in repo
