@@ -83,6 +83,23 @@ management:
     key-values:
       application: ${spring.application.name}
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      db:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+  bulkhead:
+    instances:
+      db:
+        maxConcurrentCalls: 20
+  timelimiter:
+    instances:
+      db:
+        timeoutDuration: 3s
+
 transaction:
   security:
     enabled: ${TRANSACTION_SECURITY_ENABLED:false}

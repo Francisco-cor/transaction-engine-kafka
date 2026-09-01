@@ -56,6 +56,32 @@ management:
       application: ${spring.application.name}
       environment: ${ENVIRONMENT:local}
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      db:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+  bulkhead:
+    instances:
+      db:
+        maxConcurrentCalls: 20
+        maxWaitDuration: 100ms
+  timelimiter:
+    instances:
+      db:
+        timeoutDuration: 3s
+  retry:
+    instances:
+      db:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2.0
+
 ledger:
   input-topic: ${LEDGER_INPUT_TOPIC:transactions.created.v1}
   outcome-topic: ${LEDGER_OUTCOME_TOPIC:transactions.committed.v1}

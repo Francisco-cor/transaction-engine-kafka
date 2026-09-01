@@ -59,6 +59,23 @@ management:
       application: ${spring.application.name}
       environment: ${ENVIRONMENT:local}
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      db:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+  bulkhead:
+    instances:
+      db:
+        maxConcurrentCalls: 20
+  timelimiter:
+    instances:
+      db:
+        timeoutDuration: 3s
+
 fraud:
   input-topic: ${FRAUD_INPUT_TOPIC:transactions.created.v1}
   decision-topic: ${FRAUD_DECISION_TOPIC:transactions.fraud-decisions.v1}

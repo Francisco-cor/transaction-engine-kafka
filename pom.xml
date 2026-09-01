@@ -40,6 +40,7 @@
     <pitest.version>1.15.0</pitest.version>
     <coverage.global.minimum>0.60</coverage.global.minimum>
     <coverage.ledger.minimum>0.80</coverage.ledger.minimum>
+    <resilience4j.version>2.2.0</resilience4j.version>
   </properties>
 
   <dependencyManagement>
