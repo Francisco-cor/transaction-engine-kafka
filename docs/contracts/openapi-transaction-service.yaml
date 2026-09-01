@@ -1,0 +1,317 @@
+openapi: 3.1.0
+info:
+  title: Transaction Service API
+  description: |
+    Financial transaction ingestion with idempotency, transactional outbox and
+    exactly-once business semantics. See ADR-002 for guarantees.
+  version: 0.1.0
+  contact:
+    name: transaction-engine-kafka
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local docker-compose
+  - url: http://transaction-service:8080
+    description: Inside compose network
+
+tags:
+  - name: transactions
+    description: Ingestion and query
+  - name: health
+    description: Probes
+
+paths:
+  /transactions:
+    post:
+      tags: [transactions]
+      summary: Create transaction (idempotent)
+      operationId: createTransaction
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionRequest'
+            examples:
+              debitMxn:
+                value:
+                  accountId: demo-acc-001
+                  amount: 10.00
+                  type: DEBIT
+                  currency: MXN
+              creditMxn:
+                value:
+                  accountId: demo-acc-002
+                  amount: 2500.1234
+                  type: CREDIT
+                  currency: MXN
+      responses:
+        '202':
+          description: Accepted — persisted and outbox enqueued
+          headers:
+            Location:
+              description: Polling URL
+              schema:
+                type: string
+                example: /transactions/123e4567-e89b-12d3-a456-426614174000
+            X-Correlation-Id:
+              $ref: '#/components/headers/X-Correlation-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Idempotency-Key reused with different body (request_hash mismatch)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                status: 409
+                error: Conflict
+                message: Idempotency-Key was already used with a different request body
+                correlationId: 123e4567-e89b-12d3-a456-426614174000
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /transactions/{transactionId}:
+    get:
+      tags: [transactions]
+      summary: Get transaction by id
+      operationId: getTransaction
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Found
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/X-Correlation-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /actuator/health:
+    get:
+      tags: [health]
+      summary: Liveness
+      responses:
+        '200':
+          description: UP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+
+  /actuator/health/readiness:
+    get:
+      tags: [health]
+      summary: Readiness (db + kafka)
+      responses:
+        '200':
+          description: Ready
+        '503':
+          description: Not ready
+
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 256
+      description: Client-generated idempotency key, scoped by tenant
+    TenantId:
+      name: X-Tenant-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        default: demo
+        maxLength: 128
+      description: Tenant scope for idempotency isolation
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: End-to-end correlation id, generated if absent
+    Traceparent:
+      name: traceparent
+      in: header
+      required: false
+      schema:
+        type: string
+        pattern: '^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$'
+      description: W3C Trace Context
+
+  headers:
+    X-Correlation-Id:
+      description: Echoed correlation id
+      schema:
+        type: string
+
+  schemas:
+    CreateTransactionRequest:
+      type: object
+      required: [accountId, amount, type, currency]
+      additionalProperties: false
+      properties:
+        accountId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          example: demo-acc-001
+        amount:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          multipleOf: 0.0001
+          example: 10.00
+          description: Positive, max 4 decimals, stored as NUMERIC(19,4)
+        type:
+          type: string
+          enum: [DEBIT, CREDIT]
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          example: MXN
+
+    TransactionResponse:
+      type: object
+      required: [transactionId, status, accountId, amount, currency, type, createdAt, updatedAt]
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMMITTED, REJECTED, RECONCILIATION_FAILED, COMPENSATED]
+        accountId:
+          type: string
+          example: demo-acc-001
+        amount:
+          type: number
+          format: double
+          example: 10.00
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        type:
+          type: string
+          enum: [DEBIT, CREDIT]
+        reasonCode:
+          type: string
+          nullable: true
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        correlationId:
+          type: string
+          format: uuid
+
+    ApiError:
+      type: object
+      required: [status, error, message]
+      properties:
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        correlationId:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unauthorized:
+      description: Missing or invalid Bearer token (future JWT)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: Tenant does not own accountId
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    TooManyRequests:
+      description: Rate limited
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    InternalError:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ServiceUnavailable:
+      description: Downstream unavailable (DB/Kafka)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
