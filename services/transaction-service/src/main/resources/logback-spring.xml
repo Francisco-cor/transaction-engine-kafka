@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+  <property name="LOG_FILE" value="${LOG_FILE:-${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}}/spring.log}"/>
+  <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+  <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeMdc>true</includeMdc>
+      <includeContext>true</includeContext>
+      <customFields>{"service":"transaction-service","environment":"${ENVIRONMENT:-local}"}</customFields>
+      <fieldNames>
+        <timestamp>timestamp</timestamp>
+        <message>message</message>
+        <logger>logger</logger>
+        <thread>thread</thread>
+        <level>level</level>
+        <levelValue>[ignore]</levelValue>
+        <stackTrace>stack_trace</stackTrace>
+      </fieldNames>
+      <!-- Trace fields via Micrometer: traceId/spanId are put in MDC by Tracing -->
+      <mdcKeyFieldName>trace_id=traceId</mdcKeyFieldName>
+      <mdcKeyFieldName>span_id=spanId</mdcKeyFieldName>
+      <mdcKeyFieldName>trace_id=trace_id</mdcKeyFieldName>
+      <mdcKeyFieldName>span_id=span_id</mdcKeyFieldName>
+      <!-- Business correlation -->
+      <mdcKeyFieldName>transaction_id=transaction_id</mdcKeyFieldName>
+      <mdcKeyFieldName>event_id=event_id</mdcKeyFieldName>
+      <mdcKeyFieldName>account_id=account_id</mdcKeyFieldName>
+      <mdcKeyFieldName>correlation_id=correlation_id</mdcKeyFieldName>
+      <mdcKeyFieldName>traceparent=traceparent</mdcKeyFieldName>
+    </encoder>
+  </appender>
+
+  <springProfile name="local,default">
+    <root level="INFO">
+      <appender-ref ref="CONSOLE_JSON"/>
+    </root>
+    <logger name="com.example.transactionengine" level="INFO"/>
+    <logger name="org.springframework.kafka" level="WARN"/>
+  </springProfile>
+
+  <springProfile name="dev,staging,demo">
+    <root level="INFO">
+      <appender-ref ref="CONSOLE_JSON"/>
+    </root>
+  </springProfile>
+</configuration>

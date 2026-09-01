@@ -18,6 +18,7 @@
   <properties>
     <micrometer.tracing.version>1.4.0</micrometer.tracing.version>
     <opentelemetry.version>1.44.1</opentelemetry.version>
+    <logstash.version>7.4</logstash.version>
   </properties>
 
   <dependencies>
@@ -37,6 +38,11 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+      <version>${logstash.version}</version>
     </dependency>
     <!-- Test -->
     <dependency>
