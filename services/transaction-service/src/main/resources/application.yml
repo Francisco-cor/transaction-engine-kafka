@@ -70,6 +70,9 @@ management:
 transaction:
   security:
     enabled: ${TRANSACTION_SECURITY_ENABLED:false}
+  rate-limit:
+    rps: ${TRANSACTION_RATE_LIMIT_RPS:50}
+    burst: ${TRANSACTION_RATE_LIMIT_BURST:100}
   idempotency:
     ttl-days: ${TRANSACTION_IDEMPOTENCY_TTL_DAYS:7}
   events:
