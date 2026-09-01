@@ -170,6 +170,27 @@ services:
       DB_USER: ${POSTGRES_APP_USER:-transaction_app}
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
 
+  notification-service:
+    build:
+      context: ../..
+      dockerfile: services/notification-service/Dockerfile
+    stop_grace_period: 45s
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-topics:
+        condition: service_completed_successfully
+      postgres-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8086:8086"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-transactions}
+      DB_USER: ${POSTGRES_APP_USER:-transaction_app}
+      DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:}
+
   api-gateway:
     build:
       context: ../..
