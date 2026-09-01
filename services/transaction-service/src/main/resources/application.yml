@@ -35,6 +35,15 @@ spring:
         enable.idempotence: true
         acks: all
         compression.type: zstd
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        auto.register.schemas: false
+        use.latest.version: true
+        # For Avro migration, switch to:
+        # value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+    consumer:
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        specific.avro.reader: true
 
 server:
   port: ${SERVER_PORT:8080}

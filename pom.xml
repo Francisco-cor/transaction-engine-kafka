@@ -43,6 +43,13 @@
     <resilience4j.version>2.2.0</resilience4j.version>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>confluent</id>
+      <url>https://packages.confluent.io/maven/</url>
+    </repository>
+  </repositories>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -51,6 +58,11 @@
         <version>${spring-boot.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.confluent</groupId>
+        <artifactId>kafka-avro-serializer</artifactId>
+        <version>7.7.1</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
