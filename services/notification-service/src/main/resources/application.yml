@@ -70,6 +70,8 @@ notification:
   consumer:
     retry-interval-ms: ${NOTIFICATION_RETRY_INTERVAL_MS:1000}
     max-attempts: ${NOTIFICATION_MAX_ATTEMPTS:3}
+  webhook:
+    url: ${NOTIFICATION_WEBHOOK_URL:}
   fake-provider:
     failure-rate: ${NOTIFICATION_FAKE_FAILURE_RATE:0.05}
     latency-ms: ${NOTIFICATION_FAKE_LATENCY_MS:50}

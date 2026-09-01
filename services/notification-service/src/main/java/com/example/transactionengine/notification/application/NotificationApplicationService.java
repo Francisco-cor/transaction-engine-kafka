@@ -23,6 +23,7 @@ public class NotificationApplicationService {
   private final NotificationRepository notifications;
   private final FakeNotificationProvider provider;
   private final TemplateRenderer renderer;
+  private final WebhookClient webhookClient;
   private final MeterRegistry meterRegistry;
   private final ObjectMapper objectMapper;
 
@@ -31,12 +32,14 @@ public class NotificationApplicationService {
       NotificationRepository notifications,
       FakeNotificationProvider provider,
       TemplateRenderer renderer,
+      WebhookClient webhookClient,
       MeterRegistry meterRegistry,
       ObjectMapper objectMapper) {
     this.inbox = inbox;
     this.notifications = notifications;
     this.provider = provider;
     this.renderer = renderer;
+    this.webhookClient = webhookClient;
     this.meterRegistry = meterRegistry;
     this.objectMapper = objectMapper;
   }
@@ -68,6 +71,7 @@ public class NotificationApplicationService {
       String message = renderer.render(transactionId, accountId, amount, currency, type);
       try {
         provider.send(transactionId, accountId);
+        webhookClient.deliver(transactionId, accountId, message);
         notifications.markSent(transactionId);
         inbox.markProcessed(eventId);
         Counter.builder("notifications_delivered").tag("status", "sent").register(meterRegistry).increment();
