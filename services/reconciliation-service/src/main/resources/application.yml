@@ -45,6 +45,16 @@ reconciliation:
   pending-retry-seconds: ${RECONCILIATION_PENDING_RETRY_SECONDS:5}
   batch-size: ${RECONCILIATION_BATCH_SIZE:100}
   replay-topic: ${RECONCILIATION_REPLAY_TOPIC:transactions.created.v1}
+  security:
+    enabled: ${RECONCILIATION_SECURITY_ENABLED:false}
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:}
+          jwk-set-uri: ${JWT_JWK_SET_URI:}
 
 info:
   app:

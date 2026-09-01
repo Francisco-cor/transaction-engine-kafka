@@ -69,11 +69,26 @@ public class ReconciliationApplicationService {
 
   @Transactional
   public ReplayRequest replay(UUID transactionId, String reason) {
-    var request =
-        repository.requestReplay(
-            transactionId, replayTopic, reason == null || reason.isBlank() ? "manual" : reason);
-    return new ReplayRequest(
-        request.transactionId(), request.status(), request.replayCount());
+    return replay(transactionId, reason, false, "anonymous");
+  }
+
+  @Transactional
+  public ReplayRequest replay(UUID transactionId, String reason, boolean dryRun, String requestedBy) {
+    String effectiveReason = reason == null || reason.isBlank() ? "manual" : reason;
+    if (dryRun) {
+      var current = repository.findResult(transactionId).orElse(null);
+      String status = current != null ? current.status() : "UNKNOWN";
+      int replayCount = current != null ? current.replayCount() : 0;
+      LOGGER.info(
+          "Dry-run replay requested for {} by {} reason={} currentStatus={}",
+          transactionId, requestedBy, effectiveReason, status);
+      return new ReplayRequest(transactionId, status, replayCount);
+    }
+    var request = repository.requestReplay(transactionId, replayTopic, effectiveReason, requestedBy, dryRun);
+    LOGGER.info(
+        "Replay executed for {} by {} reason={} newStatus={} replayCount={}",
+        transactionId, requestedBy, effectiveReason, request.status(), request.replayCount());
+    return new ReplayRequest(request.transactionId(), request.status(), request.replayCount());
   }
 
   private void reconcileOne(UUID transactionId) {

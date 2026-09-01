@@ -140,7 +140,8 @@ public class ReconciliationRepository {
         .findFirst();
   }
 
-  public ReplayRequestData requestReplay(UUID transactionId, String topic, String reason) {
+  public ReplayRequestData requestReplay(
+      UUID transactionId, String topic, String reason, String requestedBy, boolean dryRun) {
     var eventIds =
         jdbc.queryForList(
             """
@@ -157,6 +158,29 @@ public class ReconciliationRepository {
     if (eventIds.size() != 1) {
       throw new IllegalStateException(
           "Controlled replay requires exactly one TransactionCreated outbox event");
+    }
+
+    var statusBefore =
+        jdbc.queryForObject(
+            "SELECT status FROM transaction_schema.reconciliation_results WHERE transaction_id = :transactionId",
+            Map.of("transactionId", transactionId),
+            String.class);
+
+    jdbc.update(
+        """
+        INSERT INTO transaction_schema.reconciliation_replay_audit (
+            transaction_id, reason, requested_by, dry_run, previous_status, new_status
+        ) VALUES (:transactionId, :reason, :requestedBy, :dryRun, :previousStatus, 'PENDING')
+        """,
+        new MapSqlParameterSource()
+            .addValue("transactionId", transactionId)
+            .addValue("reason", reason)
+            .addValue("requestedBy", requestedBy)
+            .addValue("dryRun", dryRun)
+            .addValue("previousStatus", statusBefore != null ? statusBefore : "UNKNOWN"));
+
+    if (dryRun) {
+      return new ReplayRequestData(transactionId, statusBefore != null ? statusBefore : "UNKNOWN", 0);
     }
 
     var resultUpdated =
@@ -192,7 +216,7 @@ public class ReconciliationRepository {
         """,
         new MapSqlParameterSource()
             .addValue("outboxId", eventIds.getFirst())
-            .addValue("lastError", "controlled reconciliation replay: " + reason));
+            .addValue("lastError", "controlled reconciliation replay: " + reason + " by " + requestedBy));
 
     return jdbc
         .query(
@@ -210,6 +234,10 @@ public class ReconciliationRepository {
         .stream()
         .findFirst()
         .orElseThrow();
+  }
+
+  public ReplayRequestData requestReplay(UUID transactionId, String topic, String reason) {
+    return requestReplay(transactionId, topic, reason, "anonymous", false);
   }
 
   private static ReconciliationSnapshot mapSnapshot(ResultSet resultSet) throws SQLException {
