@@ -7,3 +7,5 @@ Los ADRs registran decisiones que afectan las garantías del sistema. Un ADR nue
 - [ADR-003 IDs externos](ADR-003-ids-externos.md)
 - [ADR-004 Contratos y Schema Registry](ADR-004-contratos-schema-registry.md)
 - [ADR-005 Locking de saldo](ADR-005-locking-saldo.md)
+- [ADR-006 Estrategia DLT y replay](ADR-006-estrategia-dlt.md)
+- [ADR-007 Propagación de trazas](ADR-007-propagacion-trazas.md)
