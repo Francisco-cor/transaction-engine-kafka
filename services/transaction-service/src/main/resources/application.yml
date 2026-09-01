@@ -1,6 +1,13 @@
 spring:
   application:
     name: transaction-service
+  servlet:
+    multipart:
+      max-file-size: 64KB
+      max-request-size: 64KB
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/transactions}
     username: ${DB_USER:transaction_app}
@@ -29,6 +36,15 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  tomcat:
+    max-http-form-post-size: 64KB
+    max-swallow-size: 64KB
+    threads:
+      max: 50
+  max-http-request-header-size: 8KB
+  error:
+    include-stacktrace: never
+    include-message: always
 
 springdoc:
   api-docs:
@@ -70,6 +86,9 @@ management:
 transaction:
   security:
     enabled: ${TRANSACTION_SECURITY_ENABLED:false}
+    replay-protection:
+      enabled: ${TRANSACTION_REPLAY_PROTECTION_ENABLED:true}
+      max-body-bytes: 65536
   rate-limit:
     rps: ${TRANSACTION_RATE_LIMIT_RPS:50}
     burst: ${TRANSACTION_RATE_LIMIT_BURST:100}
