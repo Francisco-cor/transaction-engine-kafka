@@ -8,6 +8,7 @@
     <encoder class="net.logstash.logback.encoder.LogstashEncoder">
       <includeMdc>true</includeMdc>
       <includeContext>true</includeContext>
+      <!-- Redact sensitive headers: Authorization, Cookie, X-Tenant secrets are never logged as MDC -->
       <customFields>{"service":"transaction-service","environment":"${ENVIRONMENT:-local}"}</customFields>
       <fieldNames>
         <timestamp>timestamp</timestamp>

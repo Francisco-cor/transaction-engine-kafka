@@ -10,6 +10,7 @@ target/
 /PLAN_ELEVACION_11_FASES.md
 
 infra/docker-compose/.env
+infra/docker-compose/secrets/
 docs/evidence/generated/
 reports/
 
