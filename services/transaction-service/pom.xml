@@ -19,6 +19,7 @@
     <testcontainers.version>1.20.1</testcontainers.version>
     <springdoc.version>2.6.0</springdoc.version>
     <swagger.parser.version>2.2.22</swagger.parser.version>
+    <json.schema.validator.version>1.0.86</json.schema.validator.version>
   </properties>
 
   <dependencies>
@@ -78,6 +79,12 @@
       <groupId>io.swagger.parser.v3</groupId>
       <artifactId>swagger-parser</artifactId>
       <version>${swagger.parser.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <version>${json.schema.validator.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
