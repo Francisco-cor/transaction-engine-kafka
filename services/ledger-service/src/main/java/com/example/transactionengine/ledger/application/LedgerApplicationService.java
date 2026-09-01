@@ -10,6 +10,7 @@ import com.example.transactionengine.ledger.domain.TransactionStatus;
 import com.example.transactionengine.ledger.domain.TransactionType;
 import com.example.transactionengine.ledger.exception.PermanentLedgerException;
 import com.example.transactionengine.ledger.exception.RetryableLedgerException;
+import com.example.transactionengine.ledger.metrics.LedgerMetrics;
 import com.example.transactionengine.ledger.persistence.InboxRepository;
 import com.example.transactionengine.ledger.persistence.LedgerRepository;
 import com.example.transactionengine.ledger.persistence.OutboxEvent;
@@ -40,6 +41,7 @@ public class LedgerApplicationService {
   private final ObjectMapper objectMapper;
   private final Clock clock;
   private final String outcomeTopic;
+  private final LedgerMetrics metrics;
 
   public LedgerApplicationService(
       InboxRepository inbox,
@@ -47,13 +49,15 @@ public class LedgerApplicationService {
       OutboxRepository outbox,
       ObjectMapper objectMapper,
       Clock clock,
-      @Value("${ledger.outcome-topic:transactions.committed.v1}") String outcomeTopic) {
+      @Value("${ledger.outcome-topic:transactions.committed.v1}") String outcomeTopic,
+      LedgerMetrics metrics) {
     this.inbox = inbox;
     this.ledger = ledger;
     this.outbox = outbox;
     this.objectMapper = objectMapper;
     this.clock = clock;
     this.outcomeTopic = outcomeTopic;
+    this.metrics = metrics;
   }
 
   @Transactional
@@ -63,6 +67,7 @@ public class LedgerApplicationService {
     var payloadHash = PayloadHash.sha256(rawPayload);
     if (!inbox.insertIfAbsent(CONSUMER_NAME, event.eventId(), event.transactionId(), payloadHash)) {
       inbox.markDuplicate(CONSUMER_NAME, event.eventId());
+      metrics.incrementDuplicate();
       return ProcessingOutcome.DUPLICATE;
     }
 
@@ -77,10 +82,13 @@ public class LedgerApplicationService {
 
     if (transaction.status() != TransactionStatus.PENDING) {
       inbox.markProcessed(CONSUMER_NAME, event.eventId());
+      metrics.incrementAlreadyFinal();
       return ProcessingOutcome.ALREADY_FINAL;
     }
 
+    var sample = metrics.startLockWait();
     var account = ledger.lockAccount(event.accountId());
+    metrics.stopLockWait(sample);
     if (account.isEmpty()) {
       return reject(
           transaction,
@@ -128,6 +136,7 @@ public class LedgerApplicationService {
         committedOutbox(
             transaction, event, balanceBefore, balanceAfter, traceparent, correlationId));
     inbox.markProcessed(CONSUMER_NAME, event.eventId());
+    metrics.incrementCommitted();
     return ProcessingOutcome.COMMITTED;
   }
 
@@ -140,6 +149,7 @@ public class LedgerApplicationService {
     ledger.markRejected(transaction.transactionId(), reason.name());
     outbox.insert(rejectedOutbox(transaction, event, reason, traceparent, correlationId));
     inbox.markProcessed(CONSUMER_NAME, event.eventId());
+    metrics.incrementRejected();
     return ProcessingOutcome.REJECTED;
   }
 

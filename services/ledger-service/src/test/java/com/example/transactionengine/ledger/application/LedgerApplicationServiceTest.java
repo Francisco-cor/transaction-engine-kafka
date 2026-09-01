@@ -14,10 +14,12 @@ import com.example.transactionengine.ledger.domain.PendingTransaction;
 import com.example.transactionengine.ledger.domain.TransactionStatus;
 import com.example.transactionengine.ledger.domain.TransactionType;
 import com.example.transactionengine.ledger.exception.PermanentLedgerException;
+import com.example.transactionengine.ledger.metrics.LedgerMetrics;
 import com.example.transactionengine.ledger.persistence.InboxRepository;
 import com.example.transactionengine.ledger.persistence.LedgerRepository;
 import com.example.transactionengine.ledger.persistence.OutboxRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -44,6 +46,7 @@ class LedgerApplicationServiceTest {
 
   @BeforeEach
   void setUp() {
+    var metrics = new LedgerMetrics(new SimpleMeterRegistry());
     service =
         new LedgerApplicationService(
             inbox,
@@ -51,7 +54,8 @@ class LedgerApplicationServiceTest {
             outbox,
             new ObjectMapper().findAndRegisterModules(),
             Clock.fixed(NOW, ZoneOffset.UTC),
-            "transactions.committed.v1");
+            "transactions.committed.v1",
+            metrics);
   }
 
   @Test
