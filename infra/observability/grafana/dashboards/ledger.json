@@ -1,0 +1,36 @@
+{
+  "title": "Ledger - Financial Correctness",
+  "uid": "ledger-correctness",
+  "tags": ["ledger"],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Committed vs Rejected per minute",
+      "targets": [
+        {"expr": "increase(ledger_committed_total[1m])", "refId": "A"},
+        {"expr": "increase(ledger_rejected_total[1m])", "refId": "B"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Duplicate events detected",
+      "targets": [{"expr": "increase(ledger_duplicate_events_total[5m])", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "DB latency (psql) p95",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(ledger_db_duration_seconds_bucket[5m])) by (le))", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Lock wait duration",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(ledger_lock_wait_seconds_bucket[5m])) by (le))", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "title": "Outbox pending vs published",
+      "targets": [{"expr": "outbox_pending_events", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 39
+}

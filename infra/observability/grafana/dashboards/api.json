@@ -1,0 +1,38 @@
+{
+  "title": "API - Transaction Ingestion",
+  "uid": "api-transaction",
+  "tags": ["api", "transactions"],
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "POST /transactions throughput (rps)",
+      "targets": [{"expr": "rate(http_server_requests_seconds_count{uri=\"/transactions\",method=\"POST\"}[1m])", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency p50/p95/p99",
+      "targets": [
+        {"expr": "histogram_quantile(0.5, sum(rate(http_server_requests_seconds_bucket{uri=\"/transactions\"}[5m])) by (le))", "refId": "A"},
+        {"expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{uri=\"/transactions\"}[5m])) by (le))", "refId": "B"},
+        {"expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{uri=\"/transactions\"}[5m])) by (le))", "refId": "C"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Errors by code",
+      "targets": [{"expr": "sum by (status) (rate(http_server_requests_seconds_count{uri=\"/transactions\",status=~\"4..|5..\"}[5m]))", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "title": "Idempotency hits (409 vs 202)",
+      "targets": [{"expr": "sum(rate(http_server_requests_seconds_count{uri=\"/transactions\",status=\"409\"}[5m]))", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Rate limiting 429",
+      "targets": [{"expr": "increase(http_server_requests_seconds_count{status=\"429\"}[5m])", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 39
+}

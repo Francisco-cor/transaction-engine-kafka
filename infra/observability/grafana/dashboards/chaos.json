@@ -1,0 +1,37 @@
+{
+  "title": "Chaos - 10k Benchmark",
+  "uid": "chaos-10k",
+  "tags": ["chaos"],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Submitted vs Accepted vs Committed",
+      "targets": [
+        {"expr": "chaos_submitted_total", "refId": "A"},
+        {"expr": "chaos_accepted_total", "refId": "B"},
+        {"expr": "chaos_committed_total", "refId": "C"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Missing/Duplicated ledger",
+      "targets": [{"expr": "chaos_missing_total + chaos_duplicated_total", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Recovery time (last failure -> stable backlog)",
+      "targets": [{"expr": "chaos_recovery_seconds", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "title": "DLT growth during chaos",
+      "targets": [{"expr": "increase(kafka_DLT_records_total[5m])", "refId": "A"}]
+    },
+    {
+      "type": "table",
+      "title": "Run summary (run-id, seed, invariants)",
+      "targets": [{"expr": "chaos_run_info", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 39
+}
