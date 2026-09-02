@@ -45,6 +45,11 @@ variable "prevent_destroy" {
   default = false
 }
 
+variable "multi_az" {
+  type    = bool
+  default = false
+}
+
 variable "tags" {
   type    = map(string)
   default = {}

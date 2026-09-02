@@ -1,0 +1,6 @@
+# Prod tfvars example — never commit real values, use TF_VAR_ or secrets manager
+aws_region           = "us-east-1"
+vpc_cidr             = "10.2.0.0/16"
+rds_instance_class   = "db.r5.large"
+# Secrets via TF_VAR_db_password or manage_master_user_password (RDS managed)
+# For prod, manage_master_user_password = true (default) — no plain password in tfvars

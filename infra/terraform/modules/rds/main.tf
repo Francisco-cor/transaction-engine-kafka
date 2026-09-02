@@ -49,6 +49,7 @@ resource "aws_db_instance" "this" {
   backup_window          = "03:00-04:00"
   maintenance_window     = "Sun:04:00-Sun:05:00"
   deletion_protection    = var.deletion_protection
+  multi_az               = var.multi_az
   copy_tags_to_snapshot  = true
   performance_insights_enabled = true
   tags = merge(var.tags, { Environment = var.env })

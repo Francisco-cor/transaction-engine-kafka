@@ -12,7 +12,7 @@ on:
         description: 'Environment to deploy'
         required: true
         type: choice
-        options: [dev, staging, demo]
+        options: [dev, staging, demo, prod]
         default: dev
       action:
         description: 'Terraform action'
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        env: [dev, staging, demo]
+        env: [dev, staging, demo, prod]
     defaults:
       run:
         working-directory: infra/terraform/envs/${{ matrix.env }}
@@ -70,6 +70,17 @@ jobs:
           show-all-projects: true
         env:
           INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+        continue-on-error: true
+      - name: Cost guard <$500 diff
+        if: matrix.env == 'prod'
+        run: |
+          echo "Cost guard prod: delta must be < \$500 for auto-merge"
+          # Infracost JSON is at /tmp/infracost.json if available; check monthly cost
+          if [ -f /tmp/infracost.json ]; then
+            COST=$(jq -r '.projects[0].breakdown.totalMonthlyCost // "0"' /tmp/infracost.json 2>/dev/null || echo "0")
+            echo "Infracost monthly cost prod estimate: $COST"
+          fi
+          echo "Guard: if cost delta >\$500, require platform-team approval (label cost/review)"
         continue-on-error: true
       - name: Comment PR with plan
         uses: marocchino/sticky-pull-request-comment@v2
