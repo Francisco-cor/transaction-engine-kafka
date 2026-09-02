@@ -176,6 +176,7 @@ reports/{sbom,chaos/{run-id}}
 - ADR-007 Propagación trazas — W3C traceparent
 - ADR-008 Evolución schema — V2 customerNote nullable
 - ADR-009 Capacidad y locking — hot account tradeoffs
+- ADR-010 Pirámide de tests y quality gates — jacoco 80/70 + Pact + jqwik 100 threads
 
 `docs/adr/README.md:1` enlaza.
 

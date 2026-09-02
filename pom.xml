@@ -40,8 +40,12 @@
     <dependency.check.version>12.1.0</dependency.check.version>
     <pitest.version>1.15.0</pitest.version>
     <coverage.global.minimum>0.60</coverage.global.minimum>
+    <coverage.global.branch>0.50</coverage.global.branch>
     <coverage.ledger.minimum>0.80</coverage.ledger.minimum>
+    <coverage.ledger.branch>0.70</coverage.ledger.branch>
     <resilience4j.version>2.2.0</resilience4j.version>
+    <jqwik.version>1.9.3</jqwik.version>
+    <pact.version>4.6.7</pact.version>
   </properties>
 
   <repositories>
@@ -169,6 +173,45 @@
   </build>
 
   <profiles>
+    <profile>
+      <id>pitest-ledger</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-maven</artifactId>
+            <version>${pitest.version}</version>
+            <configuration>
+              <targetClasses>
+                <param>com.example.transactionengine.ledger.*</param>
+              </targetClasses>
+              <targetTests>
+                <param>com.example.transactionengine.ledger.*</param>
+              </targetTests>
+              <threads>4</threads>
+              <mutationThreshold>60</mutationThreshold>
+              <coverageThreshold>80</coverageThreshold>
+              <exportLineCoverage>true</exportLineCoverage>
+              <outputFormats>
+                <outputFormat>HTML</outputFormat>
+                <outputFormat>XML</outputFormat>
+              </outputFormats>
+              <timestampedReports>false</timestampedReports>
+              <features>+EXPORT</features>
+            </configuration>
+            <executions>
+              <execution>
+                <id>pitest-check-ledger</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>mutationCoverage</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <profile>
       <id>pitest</id>
       <build>
