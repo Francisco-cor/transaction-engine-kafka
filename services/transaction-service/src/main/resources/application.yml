@@ -24,6 +24,16 @@ spring:
   flyway:
     enabled: ${FLYWAY_ENABLED:false}
     locations: filesystem:${FLYWAY_MIGRATIONS_PATH:infra/postgres/migrations}
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:redis_dev}
+      timeout: 1000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
   security:
     oauth2:
       resourceserver:
@@ -143,6 +153,11 @@ outbox:
     lease-seconds: ${OUTBOX_LEASE_SECONDS:30}
     base-backoff-seconds: ${OUTBOX_BASE_BACKOFF_SECONDS:1}
     max-backoff-seconds: ${OUTBOX_MAX_BACKOFF_SECONDS:60}
+
+statement:
+  cache:
+    local-ttl-ms: ${STATEMENT_CACHE_LOCAL_TTL_MS:1000}
+    redis-ttl-ms: ${STATEMENT_CACHE_REDIS_TTL_MS:1000}
 
 info:
   app:

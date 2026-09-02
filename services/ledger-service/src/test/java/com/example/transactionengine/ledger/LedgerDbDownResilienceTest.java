@@ -11,6 +11,7 @@ import com.example.transactionengine.ledger.metrics.LedgerMetrics;
 import com.example.transactionengine.ledger.persistence.InboxRepository;
 import com.example.transactionengine.ledger.persistence.LedgerRepository;
 import com.example.transactionengine.ledger.persistence.OutboxRepository;
+import com.example.transactionengine.ledger.sharding.AccountShardResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -39,7 +40,11 @@ class LedgerDbDownResilienceTest {
         mapper,
         Clock.fixed(Instant.now(), java.time.ZoneOffset.UTC),
         "topic",
-        new LedgerMetrics(new SimpleMeterRegistry()));
+        new LedgerMetrics(new SimpleMeterRegistry()),
+        new AccountShardResolver(32),
+        false,
+        3,
+        10);
   }
 
   @Test
@@ -93,9 +98,10 @@ class LedgerDbDownResilienceTest {
         .thenReturn(false); // duplicate
     var ledger = Mockito.mock(LedgerRepository.class);
     var metrics = new LedgerMetrics(new SimpleMeterRegistry());
+    var shardResolver = new AccountShardResolver(32);
     var service = new LedgerApplicationService(
         inbox, ledger, Mockito.mock(OutboxRepository.class), mapper,
-        Clock.systemUTC(), "topic", metrics);
+        Clock.systemUTC(), "topic", metrics, shardResolver, false, 3, 10);
     var event = new TransactionCreatedV1(
         UUID.randomUUID(), "TransactionCreated", 1, Instant.now(), UUID.randomUUID(),
         "acc-1", BigDecimal.ONE, "MXN", "DEBIT", Map.of());

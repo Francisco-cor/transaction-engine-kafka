@@ -36,7 +36,7 @@ service:
 config:
   kafka:
     bootstrapServers: "kafka:29092"
-    partitions: 6
+    partitions: 12
   postgres:
     host: postgres
     port: 5432
@@ -44,9 +44,22 @@ config:
     appUser: transaction_app
     migratorUser: transaction_migrator
     schema: transaction_schema
+  pgbouncer:
+    enabled: false
+    host: pgbouncer
+    port: 5432
+    poolMode: transaction
+    maxClientConn: 200
+    defaultPoolSize: 25
   redis:
     host: redis
     port: 6379
+  statementCache:
+    localTtlMs: 1000
+    redisTtlMs: 1000
+  ledger:
+    optimisticEnabled: false
+    shardCount: 32
   otel:
     endpoint: "http://jaeger:4317"
 

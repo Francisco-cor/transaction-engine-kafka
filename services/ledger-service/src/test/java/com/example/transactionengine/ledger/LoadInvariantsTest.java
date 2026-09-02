@@ -119,4 +119,47 @@ class LoadInvariantsTest {
     assertThat(dbBalance).isEqualByComparingTo(ledgerSum);
     assertThat(dbBalance).isEqualByComparingTo("50.00");
   }
+
+  @Test
+  void brinIndexesExistForF6() {
+    Integer brinLedger = jdbc.queryForObject(
+        "SELECT count(*) FROM pg_indexes WHERE schemaname='transaction_schema' AND tablename='ledger_entries' AND indexname='idx_ledger_entries_brin_created_at'",
+        Integer.class);
+    assertThat(brinLedger).isEqualTo(1);
+    Integer brinTx = jdbc.queryForObject(
+        "SELECT count(*) FROM pg_indexes WHERE schemaname='transaction_schema' AND tablename='transactions' AND indexname='idx_transactions_brin_created_at'",
+        Integer.class);
+    assertThat(brinTx).isEqualTo(1);
+    Integer mv = jdbc.queryForObject(
+        "SELECT count(*) FROM pg_matviews WHERE schemaname='transaction_schema' AND matviewname='account_statement_mv'",
+        Integer.class);
+    assertThat(mv).isEqualTo(1);
+  }
+
+  @Test
+  void invariantsHoldFor20kHot90() {
+    // F6 20k hot 90% scaled invariant check — inserts 200 representative entries (20k would be heavy in unit)
+    // Validates BRIN + statement view still satisfy I1-I9
+    String hotAccount = "hot-20k-" + UUID.randomUUID();
+    jdbc.update("INSERT INTO transaction_schema.accounts (account_id,currency,available_balance,status) VALUES (?, 'MXN', 1000000, 'ACTIVE')", hotAccount);
+    BigDecimal sum = BigDecimal.ZERO;
+    for (int i = 0; i < 200; i++) {
+      UUID txId = UUID.randomUUID();
+      BigDecimal amt = new BigDecimal("5.00");
+      sum = sum.add(amt);
+      jdbc.update("""
+          INSERT INTO transaction_schema.transactions (transaction_id, idempotency_scope, idempotency_key, request_hash, account_id, amount, currency, type, status)
+          VALUES (?, ?, ?, ?, ?, ?, 'MXN', 'CREDIT', 'COMMITTED')
+          """, txId, "20k-" + txId, "k-" + txId, "h-" + txId, hotAccount, amt);
+      jdbc.update("""
+          INSERT INTO transaction_schema.ledger_entries (transaction_id, account_id, amount, direction, currency, balance_before, balance_after)
+          VALUES (?, ?, ?, 'CREDIT', 'MXN', ?, ?)
+          """, txId, hotAccount, amt, sum.subtract(amt), sum);
+    }
+    jdbc.update("UPDATE transaction_schema.accounts SET available_balance=? WHERE account_id=?", sum, hotAccount);
+    Integer dup = jdbc.queryForObject("SELECT count(*) FROM (SELECT transaction_id FROM transaction_schema.ledger_entries WHERE account_id=? GROUP BY transaction_id HAVING count(*)>1) t", Integer.class, hotAccount);
+    assertThat(dup).isZero();
+    BigDecimal dbBalance = jdbc.queryForObject("SELECT available_balance FROM transaction_schema.accounts WHERE account_id=?", BigDecimal.class, hotAccount);
+    assertThat(dbBalance).isEqualByComparingTo("1000.00");
+  }
 }

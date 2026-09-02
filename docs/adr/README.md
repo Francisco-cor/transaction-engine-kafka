@@ -14,3 +14,4 @@ Los ADRs registran decisiones que afectan las garantías del sistema. Un ADR nue
 - [ADR-010 Pirámide de tests y quality gates](ADR-010-test-pyramid-and-quality-gates.md)
 - [ADR-011 Seguridad Vault, mTLS y OPA](ADR-011-seguridad-vault-mtls.md)
 - [ADR-012 Avro Wire y gate blocking](ADR-012-avro-wire.md)
+- [ADR-013 Sharding Hot-Account y CQRS Read-Model](ADR-013-sharding-and-cqrs.md)

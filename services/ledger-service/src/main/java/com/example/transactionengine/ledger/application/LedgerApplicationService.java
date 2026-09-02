@@ -11,6 +11,7 @@ import com.example.transactionengine.ledger.domain.TransactionType;
 import com.example.transactionengine.ledger.exception.PermanentLedgerException;
 import com.example.transactionengine.ledger.exception.RetryableLedgerException;
 import com.example.transactionengine.ledger.metrics.LedgerMetrics;
+import com.example.transactionengine.ledger.sharding.AccountShardResolver;
 import com.example.transactionengine.ledger.persistence.InboxRepository;
 import com.example.transactionengine.ledger.persistence.LedgerRepository;
 import com.example.transactionengine.ledger.persistence.OutboxEvent;
@@ -21,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,10 @@ public class LedgerApplicationService {
   private final Clock clock;
   private final String outcomeTopic;
   private final LedgerMetrics metrics;
+  private final AccountShardResolver shardResolver;
+  private final boolean optimisticEnabled;
+  private final int optimisticMaxRetries;
+  private final long optimisticBackoffMs;
 
   public LedgerApplicationService(
       InboxRepository inbox,
@@ -50,7 +56,11 @@ public class LedgerApplicationService {
       ObjectMapper objectMapper,
       Clock clock,
       @Value("${ledger.outcome-topic:transactions.committed.v1}") String outcomeTopic,
-      LedgerMetrics metrics) {
+      LedgerMetrics metrics,
+      AccountShardResolver shardResolver,
+      @Value("${ledger.optimistic.enabled:false}") boolean optimisticEnabled,
+      @Value("${ledger.optimistic.max-retries:3}") int optimisticMaxRetries,
+      @Value("${ledger.optimistic.backoff-ms:10}") long optimisticBackoffMs) {
     this.inbox = inbox;
     this.ledger = ledger;
     this.outbox = outbox;
@@ -58,6 +68,10 @@ public class LedgerApplicationService {
     this.clock = clock;
     this.outcomeTopic = outcomeTopic;
     this.metrics = metrics;
+    this.shardResolver = shardResolver;
+    this.optimisticEnabled = optimisticEnabled;
+    this.optimisticMaxRetries = optimisticMaxRetries;
+    this.optimisticBackoffMs = optimisticBackoffMs;
   }
 
   @Transactional
@@ -84,6 +98,13 @@ public class LedgerApplicationService {
       inbox.markProcessed(CONSUMER_NAME, event.eventId());
       metrics.incrementAlreadyFinal();
       return ProcessingOutcome.ALREADY_FINAL;
+    }
+
+    // F6 sharding: consistent hash 32 shards for hot-account distribution
+    shardResolver.resolve(event.accountId());
+
+    if (optimisticEnabled) {
+      return processOptimistic(transaction, event, traceparent, correlationId);
     }
 
     var sample = metrics.startLockWait();
@@ -138,6 +159,70 @@ public class LedgerApplicationService {
     inbox.markProcessed(CONSUMER_NAME, event.eventId());
     metrics.incrementCommitted();
     return ProcessingOutcome.COMMITTED;
+  }
+
+  private ProcessingOutcome processOptimistic(
+      PendingTransaction transaction,
+      TransactionCreatedV1 event,
+      String traceparent,
+      String correlationId) {
+    for (int attempt = 0; attempt < optimisticMaxRetries; attempt++) {
+      var sample = metrics.startLockWait();
+      var accountOpt = ledger.findAccount(event.accountId());
+      metrics.stopLockWait(sample);
+      if (accountOpt.isEmpty()) {
+        return reject(
+            transaction, event, LedgerReasonCode.ACCOUNT_NOT_FOUND, traceparent, correlationId);
+      }
+      var accountRecord = accountOpt.get();
+      var statusReason = accountStatusReason(accountRecord);
+      if (statusReason != null) {
+        return reject(transaction, event, statusReason, traceparent, correlationId);
+      }
+      if (!accountRecord.currency().equals(event.currency())) {
+        return reject(
+            transaction, event, LedgerReasonCode.CURRENCY_MISMATCH, traceparent, correlationId);
+      }
+      var balanceBefore = accountRecord.availableBalance();
+      var balanceAfter = calculateBalance(balanceBefore, event.amount(), event.type());
+      if (balanceAfter.signum() < 0) {
+        return reject(
+            transaction, event, LedgerReasonCode.INSUFFICIENT_FUNDS, traceparent, correlationId);
+      }
+      boolean updated =
+          ledger.updateAccountOptimistic(event.accountId(), balanceAfter, accountRecord.version());
+      if (updated) {
+        ledger.insertLedgerEntry(
+            transaction.transactionId(),
+            transaction.accountId(),
+            transaction.amount(),
+            transaction.type(),
+            transaction.currency(),
+            balanceBefore,
+            balanceAfter);
+        ledger.markCommitted(transaction.transactionId());
+        outbox.insert(
+            committedOutbox(
+                transaction, event, balanceBefore, balanceAfter, traceparent, correlationId));
+        inbox.markProcessed(CONSUMER_NAME, event.eventId());
+        metrics.incrementCommitted();
+        return ProcessingOutcome.COMMITTED;
+      }
+      metrics.incrementOptimisticRetry();
+      if (attempt < optimisticMaxRetries - 1) {
+        long backoff =
+            (long) (optimisticBackoffMs * Math.pow(2, attempt) * (1 + ThreadLocalRandom.current().nextDouble(0.2)));
+        try {
+          Thread.sleep(backoff);
+        } catch (InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+          throw new RetryableLedgerException("Interrupted during optimistic retry");
+        }
+      }
+    }
+    metrics.incrementOptimisticFailure();
+    throw new RetryableLedgerException(
+        "Optimistic lock failed after " + optimisticMaxRetries + " retries for account " + event.accountId());
   }
 
   private ProcessingOutcome reject(

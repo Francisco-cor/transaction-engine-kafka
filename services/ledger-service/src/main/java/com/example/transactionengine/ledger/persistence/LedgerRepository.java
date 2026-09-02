@@ -70,6 +70,38 @@ public class LedgerRepository {
         .findFirst();
   }
 
+  public Optional<AccountRecord> findAccount(String accountId) {
+    return jdbc
+        .query(
+            """
+            SELECT account_id, currency, available_balance, version, status
+              FROM transaction_schema.accounts
+             WHERE account_id = :accountId
+            """,
+            Map.of("accountId", accountId),
+            ACCOUNT_MAPPER)
+        .stream()
+        .findFirst();
+  }
+
+  public boolean updateAccountOptimistic(
+      String accountId, java.math.BigDecimal balanceAfter, long expectedVersion) {
+    var updated =
+        jdbc.update(
+            """
+            UPDATE transaction_schema.accounts
+               SET available_balance = :balanceAfter,
+                   version = version + 1,
+                   updated_at = CURRENT_TIMESTAMP
+             WHERE account_id = :accountId AND version = :expectedVersion
+            """,
+            new MapSqlParameterSource()
+                .addValue("accountId", accountId)
+                .addValue("balanceAfter", balanceAfter)
+                .addValue("expectedVersion", expectedVersion));
+    return updated == 1;
+  }
+
   public void insertLedgerEntry(
       UUID transactionId,
       String accountId,

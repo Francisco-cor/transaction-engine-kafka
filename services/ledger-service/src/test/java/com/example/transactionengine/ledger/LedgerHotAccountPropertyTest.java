@@ -8,6 +8,7 @@ import com.example.transactionengine.ledger.metrics.LedgerMetrics;
 import com.example.transactionengine.ledger.persistence.InboxRepository;
 import com.example.transactionengine.ledger.persistence.LedgerRepository;
 import com.example.transactionengine.ledger.persistence.OutboxRepository;
+import com.example.transactionengine.ledger.sharding.AccountShardResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -49,9 +50,11 @@ class LedgerHotAccountPropertyTest {
     var ledger = Mockito.mock(LedgerRepository.class);
     var outbox = Mockito.mock(OutboxRepository.class);
     var metrics = new LedgerMetrics(new SimpleMeterRegistry());
+    var shardResolver = new AccountShardResolver(32);
     var service =
         new LedgerApplicationService(
-            inbox, ledger, outbox, mapper, Clock.fixed(Instant.now(), java.time.ZoneOffset.UTC), "topic", metrics);
+            inbox, ledger, outbox, mapper, Clock.fixed(Instant.now(), java.time.ZoneOffset.UTC), "topic", metrics,
+            shardResolver, false, 3, 10);
 
     // Mock: first insert succeeds, rest are duplicates
     Mockito.when(inbox.insertIfAbsent(Mockito.anyString(), Mockito.any(), Mockito.any(), Mockito.anyString()))
@@ -99,9 +102,11 @@ class LedgerHotAccountPropertyTest {
     var ledger = Mockito.mock(LedgerRepository.class);
     var outbox = Mockito.mock(OutboxRepository.class);
     var metrics = new LedgerMetrics(new SimpleMeterRegistry());
+    var shardResolver = new AccountShardResolver(32);
     var service =
         new LedgerApplicationService(
-            inbox, ledger, outbox, mapper, Clock.systemUTC(), "topic", metrics);
+            inbox, ledger, outbox, mapper, Clock.systemUTC(), "topic", metrics,
+            shardResolver, false, 3, 10);
 
     var eventId = UUID.randomUUID();
     var baseTxId = UUID.randomUUID();

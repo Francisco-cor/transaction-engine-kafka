@@ -19,6 +19,7 @@ import com.example.transactionengine.ledger.persistence.InboxRepository;
 import com.example.transactionengine.ledger.persistence.LedgerRepository;
 import com.example.transactionengine.ledger.persistence.OutboxRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.transactionengine.ledger.sharding.AccountShardResolver;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -47,6 +48,7 @@ class LedgerApplicationServiceTest {
   @BeforeEach
   void setUp() {
     var metrics = new LedgerMetrics(new SimpleMeterRegistry());
+    var shardResolver = new AccountShardResolver(32);
     service =
         new LedgerApplicationService(
             inbox,
@@ -55,7 +57,11 @@ class LedgerApplicationServiceTest {
             new ObjectMapper().findAndRegisterModules(),
             Clock.fixed(NOW, ZoneOffset.UTC),
             "transactions.committed.v1",
-            metrics);
+            metrics,
+            shardResolver,
+            false,
+            3,
+            10);
   }
 
   @Test

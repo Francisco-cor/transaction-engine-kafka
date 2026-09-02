@@ -42,11 +42,33 @@ services:
     environment:
       TOPIC_RETENTION_MS: ${KAFKA_TOPIC_RETENTION_MS:-604800000}
       DLT_RETENTION_MS: ${KAFKA_DLT_RETENTION_MS:-1209600000}
-      KAFKA_PARTITIONS: ${KAFKA_PARTITIONS:-6}
+      KAFKA_PARTITIONS: ${KAFKA_PARTITIONS:-12}
     volumes:
       - ./init/create-topics.sh:/opt/init-topics/create-topics.sh:ro
     entrypoint: ["/bin/bash", "/opt/init-topics/create-topics.sh"]
     restart: "no"
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.21.0
+    hostname: pgbouncer
+    ports:
+      - "${PGBOUNCER_HOST_PORT:-6432}:5432"
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_APP_USER:-transaction_app}:${POSTGRES_APP_PASSWORD:-transaction_app_dev}@postgres:5432/${POSTGRES_DB:-transactions}"
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 25
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 2
+      MAX_DB_CONNECTIONS: 50
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U ${POSTGRES_APP_USER:-transaction_app} || exit 1"]
+      interval: 5s
+      retries: 12
 
   postgres:
     image: postgres:16.4-alpine
@@ -102,12 +124,20 @@ services:
         condition: service_completed_successfully
       postgres-migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-transactions}
+      DB_URL: ${DB_URL:-jdbc:postgresql://postgres:5432/${POSTGRES_DB:-transactions}}
+      # F6 pgBouncer opt-in: set DB_URL=jdbc:postgresql://pgbouncer:5432/${POSTGRES_DB:-transactions}
       DB_USER: ${POSTGRES_APP_USER:-transaction_app}
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_dev}
+      STATEMENT_CACHE_LOCAL_TTL_MS: 1000
+      STATEMENT_CACHE_REDIS_TTL_MS: 1000
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       OUTBOX_PUBLISHER_ENABLED: "true"
       DB_POOL_MAX_SIZE: 20

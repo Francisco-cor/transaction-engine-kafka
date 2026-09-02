@@ -129,6 +129,12 @@ ledger:
   outcome-topic: ${LEDGER_OUTCOME_TOPIC:transactions.committed.v1}
   lock:
     timeout-ms: ${LEDGER_LOCK_TIMEOUT_MS:3000}
+  optimistic:
+    enabled: ${LEDGER_OPTIMISTIC_ENABLED:false}
+    max-retries: ${LEDGER_OPTIMISTIC_MAX_RETRIES:3}
+    backoff-ms: ${LEDGER_OPTIMISTIC_BACKOFF_MS:10}
+  sharding:
+    shard-count: ${LEDGER_SHARD_COUNT:32}
   consumer:
     retry-interval-ms: ${LEDGER_RETRY_INTERVAL_MS:1000}
     max-attempts: ${LEDGER_MAX_ATTEMPTS:3}
