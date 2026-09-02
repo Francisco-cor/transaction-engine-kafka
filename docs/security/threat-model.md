@@ -65,10 +65,19 @@ Relacionado: docs/security/secrets.md, ADR-002 exactly-once, ADR-006 DLT, docs/a
 - tini no es necesario si `shareProcessNamespace` en K8s, pero se mantiene para compose signal reap.
 - Cosign firma opcional; próxima fase añade `policy-controller` verification.
 
-## 7. Checklist Fase 8
+## 7. Checklist Fase 8 → F3 Delta
 
 - [x] Dockerfile distroless nonroot + tini + pinned digests
 - [x] Trivy sin CRITICAL sin triage, SBOM SPDX/CycloneDX
 - [x] Spotless + Checkstyle gate con Javadoc api
 - [x] Renovate semanal con pinDigests
 - [x] STRIDE documentado y `secrets.md` con checklist inspect/helm/logs
+
+## 8. Delta F3 Vault/mTLS/OPA (2026-09-01)
+
+- Vault `1.15.6` dev `kv` + `transit customer-note` (`docker-compose.vault.yml:6` + `external-secrets-vault.yaml:11`)
+- Tokenización `libs/security/VaultTransitClient.java:24` `encrypt vault:v1` fallback `plain` + `ADR-011`
+- mTLS `NetworkPolicy deny-all` + `ledger→postgres:5432` + `cert-manager selfsigned` (`helm/umbrella/templates/networkpolicy.yaml:1`)
+- OPA `infra/opa/policy.rego:1` `allow replay only admin:replay`
+- Audit `libs/security/AuditLogger.java:11` Loki 30d `service="audit"` (`loki-config.yml:14` `720h`)
+- WAF `WafBodyLimitFilter.java:11` `413` >64KB + `RateLimitFilter` local `Bucket4j 50rps` (gateway Redis distribuido)

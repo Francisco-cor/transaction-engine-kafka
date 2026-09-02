@@ -2,6 +2,7 @@ package com.example.transactionengine.transaction.application;
 
 import com.example.transactionengine.contracts.TransactionCreatedV1;
 import com.example.transactionengine.observability.TraceContext;
+import com.example.transactionengine.security.VaultTransitClient;
 import com.example.transactionengine.transaction.api.CreateTransactionRequest;
 import com.example.transactionengine.transaction.api.TransactionResponse;
 import com.example.transactionengine.transaction.domain.TransactionRecord;
@@ -33,16 +34,19 @@ public class TransactionApplicationService {
   private final OutboxRepository outbox;
   private final ObjectMapper objectMapper;
   private final Clock clock;
+  private final VaultTransitClient vaultTransit;
 
   public TransactionApplicationService(
       TransactionRepository transactions,
       OutboxRepository outbox,
       ObjectMapper objectMapper,
-      Clock clock) {
+      Clock clock,
+      VaultTransitClient vaultTransit) {
     this.transactions = transactions;
     this.outbox = outbox;
     this.objectMapper = objectMapper;
     this.clock = clock;
+    this.vaultTransit = vaultTransit;
   }
 
   @Transactional
@@ -103,7 +107,15 @@ public class TransactionApplicationService {
     eventMap.put("type", created.type().name());
     eventMap.put("metadata", Map.of());
     if (isV2) {
-      eventMap.put("customerNote", normalizedRequest.customerNote());
+      // F3 tokenize customerNote via Vault Transit if enabled; fallback plain with vault=plain flag
+      String note = normalizedRequest.customerNote();
+      String storedNote = vaultTransit != null ? vaultTransit.tokenizeOrPlain(note) : note;
+      eventMap.put("customerNote", storedNote);
+      if (vaultTransit != null && vaultTransit.isEnabled() && storedNote != null && storedNote.startsWith("vault:")) {
+        eventMap.put("customerNoteVault", "vault");
+      } else if (isV2) {
+        eventMap.put("customerNoteVault", "plain");
+      }
     }
     // Also keep TransactionCreatedV1 for validation (when v1)
     if (!isV2) {

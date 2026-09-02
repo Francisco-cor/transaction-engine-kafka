@@ -1,6 +1,7 @@
 package com.example.transactionengine.ledger.admin;
 
 import com.example.transactionengine.ledger.application.PayloadHash;
+import com.example.transactionengine.security.AuditLogger;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,14 +19,17 @@ public class DltReplayService {
 
   private final NamedParameterJdbcTemplate jdbc;
   private final KafkaTemplate<String, String> kafkaTemplate;
+  private final AuditLogger audit;
   private final String inputTopic;
 
   public DltReplayService(
       NamedParameterJdbcTemplate jdbc,
       KafkaTemplate<String, String> kafkaTemplate,
+      AuditLogger audit,
       @Value("${ledger.input-topic:transactions.created.v1}") String inputTopic) {
     this.jdbc = jdbc;
     this.kafkaTemplate = kafkaTemplate;
+    this.audit = audit;
     this.inputTopic = inputTopic;
   }
 
@@ -56,6 +60,7 @@ public class DltReplayService {
 
     if (dryRun) {
       LOG.info("DLT dry-run replay: topic={} partition={} offset={} by={} reason={} hash={}", dltTopic, partition, offset, requestedBy, reason, payloadHash);
+      if (audit != null) audit.logDltReplay(dltTopic + "-" + partition + "-" + offset, requestedBy, reason);
       return new DltReplayResult(dltTopic, partition, offset, "DRY_RUN", payloadHash);
     }
 
@@ -63,6 +68,7 @@ public class DltReplayService {
     String key = extractAccountId(payload);
     kafkaTemplate.send(inputTopic, key, payload);
     LOG.info("DLT replay published: topic={} partition={} offset={} -> {} key={} by={} reason={}", dltTopic, partition, offset, inputTopic, key, requestedBy, reason);
+    if (audit != null) audit.logDltReplay(dltTopic + "-" + partition + "-" + offset, requestedBy, reason);
     return new DltReplayResult(dltTopic, partition, offset, "REPLAYED", payloadHash);
   }
 

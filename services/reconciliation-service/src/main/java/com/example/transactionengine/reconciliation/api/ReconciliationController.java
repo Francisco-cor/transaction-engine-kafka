@@ -50,6 +50,7 @@ public class ReconciliationController {
    * @param jwt caller principal
    * @return replay request
    */
+  // F3 OPA: infra/opa/policy.rego also enforces replay allow only admin:replay (gateway sidecar)
   @PostMapping("/{transactionId}/replay")
   @ResponseStatus(HttpStatus.ACCEPTED)
   @PreAuthorize("hasAuthority('SCOPE_admin:replay') or @securityChecker.isSecurityDisabled()")

@@ -14,6 +14,7 @@
   <modules>
     <module>libs/event-contracts</module>
     <module>libs/observability</module>
+    <module>libs/security</module>
     <module>services/api-gateway</module>
     <module>services/transaction-service</module>
     <module>services/ledger-service</module>

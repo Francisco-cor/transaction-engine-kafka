@@ -1,0 +1,29 @@
+# Standalone NetworkPolicy for kind / no-Helm — deny-all + allowlist
+# Apply: kubectl apply -f infra/k8s/networkpolicy.yaml -n transaction-engine
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: transaction-engine
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: transaction-engine
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ledger-mtls
+  namespace: transaction-engine
+spec:
+  secretName: ledger-mtls-cert
+  issuerRef: { name: selfsigned-issuer }
+  dnsNames: [ledger-service, ledger-service.transaction-engine.svc.cluster.local]
+  privateKey: { algorithm: ECDSA, size: 256 }

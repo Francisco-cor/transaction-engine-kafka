@@ -1,0 +1,54 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "umbrella.fullname" . }}-deny-all
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to: [{ ipBlock: { cidr: 0.0.0.0/0, except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16] } }]
+      ports: [{ port: 53, protocol: UDP }, { port: 53, protocol: TCP }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "umbrella.fullname" . }}-allow-ledger-to-postgres
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/component: postgres }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/component: ledger-service } }
+        - podSelector: { matchLabels: { app.kubernetes.io/component: transaction-service } }
+        - podSelector: { matchLabels: { app.kubernetes.io/component: fraud-service } }
+      ports: [{ port: 5432 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "umbrella.fullname" . }}-allow-gateway-to-services
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/component: transaction-service }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app.kubernetes.io/component: gateway } } }]
+      ports: [{ port: 8080 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "umbrella.fullname" . }}-allow-kafka-clients
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/component: kafka }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: {{ include "umbrella.name" . }} } }
+      ports: [{ port: 29092 }, { port: 9092 }]
+{{- end }}

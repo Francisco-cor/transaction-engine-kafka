@@ -14,6 +14,8 @@ import org.springframework.util.StringUtils;
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
+  // F3 mTLS: when GATEWAY_MTLS_ENABLED=true, gateway validates client cert via X-Forwarded-Client-Cert
+  // In compose dev mTLS is off; in K8s with Linkerd/cert-manager it is on (see infra/k8s/networkpolicy.yaml).
   @Value("${GATEWAY_SECURITY_ENABLED:true}")
   private boolean securityEnabled;
 

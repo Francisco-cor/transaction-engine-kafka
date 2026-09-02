@@ -96,6 +96,9 @@ containerSecurityContext:
     drop:
       - ALL
 
+networkPolicy:
+  enabled: true
+
 podDisruptionBudget:
   enabled: true
   maxUnavailable: 1
