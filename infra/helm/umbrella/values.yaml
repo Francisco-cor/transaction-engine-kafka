@@ -123,6 +123,10 @@ autoscaling:
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
 
+linkerd:
+  enabled: true
+  inject: enabled
+
 keda:
   enabled: true
   pollingInterval: 15

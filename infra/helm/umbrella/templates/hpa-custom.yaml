@@ -1,0 +1,80 @@
+{{- if .Values.keda.enabled }}
+---
+# F8: HPA custom metrics for kafka lag (alternative to KEDA when prometheus-adapter available)
+# Uses external metric kafka_consumer_group_lag provided by prometheus-adapter or KEDA external metrics
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "umbrella.fullname" . }}-ledger-kafka-lag
+  labels:
+    {{- include "umbrella.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ledger-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "umbrella.fullname" . }}-ledger-service
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: kafka_consumer_group_lag
+          selector:
+            matchLabels:
+              topic: {{ .Values.keda.kafka.topic }}
+              consumergroup: {{ .Values.keda.kafka.consumerGroup }}
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.keda.kafka.lagThreshold | quote }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+---
+# KEDA ScaledJob for reconciliation replay (on-demand job scaling)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: {{ include "umbrella.fullname" . }}-reconciliation-replay
+  labels:
+    {{- include "umbrella.labels" . | nindent 4 }}
+    app.kubernetes.io/component: reconciliation-service
+spec:
+  jobTargetRef:
+    template:
+      spec:
+        serviceAccountName: {{ include "umbrella.fullname" . }}-reconciliation-service
+        restartPolicy: Never
+        containers:
+          - name: replay
+            image: "{{ .Values.images.reconciliationService }}"
+            command: ["java", "-jar", "/app/app.jar", "--replay-job"]
+            envFrom:
+              - configMapRef:
+                  name: {{ include "umbrella.fullname" . }}-config
+            resources:
+              {{- toYaml .Values.resources | nindent 14 }}
+  pollingInterval: {{ .Values.keda.pollingInterval }}
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  maxReplicaCount: 5
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: {{ .Values.keda.kafka.bootstrapServers }}
+        consumerGroup: {{ .Values.keda.kafka.consumerGroup }}-replay
+        topic: {{ .Values.keda.kafka.topic }}.DLT
+        lagThreshold: "10"
+        offsetResetPolicy: latest
+{{- end }}

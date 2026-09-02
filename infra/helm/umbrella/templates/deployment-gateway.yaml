@@ -19,11 +19,14 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
+      annotations:
+        linkerd.io/inject: {{ .Values.linkerd.inject | quote }}
       labels:
         app.kubernetes.io/name: {{ include "umbrella.name" . }}
         app.kubernetes.io/component: api-gateway
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      serviceAccountName: {{ include "umbrella.fullname" . }}-api-gateway
       terminationGracePeriodSeconds: 45
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}

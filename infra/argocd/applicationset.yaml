@@ -1,0 +1,67 @@
+# ArgoCD ApplicationSet for transaction-engine — syncs helm umbrella per env (F8)
+# Usage: kubectl apply -f infra/argocd/applicationset.yaml -n argocd
+# Requires ArgoCD installed via infra/k8s/argocd-install.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: transaction-engine
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - list:
+        elements:
+          - env: dev
+            cluster: in-cluster
+            url: https://kubernetes.default.svc
+            values: values-dev.yaml
+            namespace: transaction-engine-dev
+            autoSync: true
+          - env: staging
+            cluster: in-cluster
+            url: https://kubernetes.default.svc
+            values: values.yaml
+            namespace: transaction-engine-staging
+            autoSync: false
+          - env: demo
+            cluster: in-cluster
+            url: https://kubernetes.default.svc
+            values: values.yaml
+            namespace: transaction-engine-demo
+            autoSync: false
+  template:
+    metadata:
+      name: 'transaction-engine-{{.env}}'
+      labels:
+        app.kubernetes.io/part-of: transaction-engine
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/example/transaction-engine-kafka
+        targetRevision: HEAD
+        path: infra/helm/umbrella
+        helm:
+          valueFiles:
+            - /values.yaml
+            - /{{.values}}
+          parameters:
+            - name: global.environment
+              value: '{{.env}}'
+      destination:
+        server: '{{.url}}'
+        namespace: '{{.namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+          - CreateNamespace=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m

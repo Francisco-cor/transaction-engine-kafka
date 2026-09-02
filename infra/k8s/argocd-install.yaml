@@ -1,0 +1,26 @@
+# ArgoCD install manifest reference (F8) — apply via helm or raw manifests
+# Option A (helm): helm repo add argo https://argoproj.github.io/argo-helm && helm upgrade --install argocd argo/argo-cd -n argocd --create-namespace -f infra/k8s/argocd-values.yaml
+# Option B (raw): kubectl create namespace argocd && kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.5/manifests/install.yaml
+# This file is a kustomize-friendly placeholder that points to upstream.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-bootstrap
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/argoproj/argo-cd
+    path: manifests/install.yaml
+    targetRevision: v2.10.5
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
