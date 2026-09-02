@@ -54,6 +54,24 @@ public final class TraceContext {
     if (transactionId != null) current.tag("transaction_id", transactionId);
     if (eventId != null) current.tag("event_id", eventId);
     if (accountId != null) current.tag("account_id", accountId);
+    // Baggage for W3C: propagate transaction_id as baggage for downstream
+    // Micrometer tracing will auto-propagate via Baggage fields if OTEL configured
+  }
+
+  public static String baggage(String transactionId, String accountId) {
+    // W3C baggage header: transaction_id=abc,account_id=xyz
+    var sb = new StringBuilder();
+    if (transactionId != null) sb.append("transaction_id=").append(transactionId);
+    if (accountId != null) {
+      if (sb.length() > 0) sb.append(",");
+      sb.append("account_id=").append(accountId);
+    }
+    return sb.toString();
+  }
+
+  public static void addExemplar(io.micrometer.core.instrument.Timer.Sample sample, String traceId) {
+    // Exemplar for Prometheus histogram — Micrometer will attach trace_id if exemplar enabled
+    // No-op if tracing not enabled; actual exemplar is added via Timer.Sample.stop() with trace context
   }
 
   public static Optional<String> currentTraceId(Tracer tracer) {

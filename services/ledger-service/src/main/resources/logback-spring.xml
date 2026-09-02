@@ -8,6 +8,18 @@
     <encoder class="net.logstash.logback.encoder.LogstashEncoder">
       <includeMdc>true</includeMdc>
       <includeContext>true</includeContext>
+      <!-- PII redact: never log Authorization, password, secret, token — MaskingJsonGeneratorDecorator -->
+      <jsonGeneratorDecorator class="net.logstash.logback.mask.MaskingJsonGeneratorDecorator">
+        <defaultMask>***</defaultMask>
+        <path>password</path>
+        <path>secret</path>
+        <path>authorization</path>
+        <path>Authorization</path>
+        <path>token</path>
+        <path>DB_PASSWORD</path>
+        <path>REDIS_PASSWORD</path>
+        <path>customerNote</path>
+      </jsonGeneratorDecorator>
       <customFields>{"service":"ledger-service","environment":"${ENVIRONMENT:-local}"}</customFields>
       <fieldNames>
         <timestamp>timestamp</timestamp>

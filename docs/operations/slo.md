@@ -11,6 +11,18 @@ Estos objetivos son para el entorno local/portfolio y no constituyen un SLO prod
 | Mensajes en DLT | 0 para payloads válidos | Cualquier crecimiento sostenido |
 | Cobertura de líneas del servicio | ≥ 50% en fase 0 | < 50% |
 
+## SLOs PLG con exemplars (F2)
+
+| Señal | SLI | Objetivo | Fuente | Alerta |
+|---|---|---|---|---|
+| Latencia p95 | `histogram_quantile(0.95, http_server_requests_seconds_bucket)` | ≤500ms | `job:http_requests:rate5m` | `HighApiLatency` |
+| Lock wait p95 | `job:ledger_lock_wait:p95` | <100ms | `recording-rules.yml` | `DbPoolExhausted` |
+| Trace sampling | `tail_sampling` 10% + 100% errors | >99% errors sampled | `collector-config.yml` | `OtelCollectorDown` |
+| Log correlation | `Loki` `transaction_id`→`trace_id` | 100% logs con trace_id | `logback` MDC | `LokiIngestionErrors` |
+| Profiling | `pyroscope` lock_wait flame | presente | `PYROSCOPE_SERVER_ADDRESS` | `PyroscopeProfilingDown` |
+
+Exemplars: `prometheus.yml:44` `enable_exemplar: true` + `otel-collector` `spanmetrics.exemplars.enabled` → Grafana click en `ledger_lock_wait` punto lleva a Tempo `trace_id`.
+
 ## Límites de carga iniciales
 
 - 10,000 transacciones es el benchmark de referencia de fases posteriores.

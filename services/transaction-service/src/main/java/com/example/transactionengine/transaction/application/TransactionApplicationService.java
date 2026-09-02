@@ -1,6 +1,7 @@
 package com.example.transactionengine.transaction.application;
 
 import com.example.transactionengine.contracts.TransactionCreatedV1;
+import com.example.transactionengine.observability.TraceContext;
 import com.example.transactionengine.transaction.api.CreateTransactionRequest;
 import com.example.transactionengine.transaction.api.TransactionResponse;
 import com.example.transactionengine.transaction.domain.TransactionRecord;
@@ -124,6 +125,8 @@ public class TransactionApplicationService {
 
     try {
       String payload = objectMapper.writeValueAsString(eventMap);
+      // W3C baggage for downstream (F2) + exemplars trace_id
+      String baggage = TraceContext.baggage(created.transactionId().toString(), created.accountId());
       outbox.insert(
           new OutboxEvent(
               created.transactionId(),
@@ -135,6 +138,7 @@ public class TransactionApplicationService {
                       "event_type", EVENT_TYPE,
                       "schema_version", Integer.toString(schemaVersion),
                       "traceparent", TraceContext.resolve(traceparent),
+                      "baggage", baggage,
                       "correlation_id", resolvedCorrelationId,
                       "producer", "transaction-service",
                       "content_type", "application/json",

@@ -1,37 +1,14 @@
 {
-  "title": "Chaos - 10k Benchmark",
+  "title": "Chaos - 10k/20k Recovery",
   "uid": "chaos-10k",
-  "tags": ["chaos"],
+  "tags": ["chaos", "plg"],
   "panels": [
-    {
-      "type": "timeseries",
-      "title": "Submitted vs Accepted vs Committed",
-      "targets": [
-        {"expr": "chaos_submitted_total", "refId": "A"},
-        {"expr": "chaos_accepted_total", "refId": "B"},
-        {"expr": "chaos_committed_total", "refId": "C"}
-      ]
-    },
-    {
-      "type": "stat",
-      "title": "Missing/Duplicated ledger",
-      "targets": [{"expr": "chaos_missing_total + chaos_duplicated_total", "refId": "A"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "Recovery time (last failure -> stable backlog)",
-      "targets": [{"expr": "chaos_recovery_seconds", "refId": "A"}]
-    },
-    {
-      "type": "stat",
-      "title": "DLT growth during chaos",
-      "targets": [{"expr": "increase(kafka_DLT_records_total[5m])", "refId": "A"}]
-    },
-    {
-      "type": "table",
-      "title": "Run summary (run-id, seed, invariants)",
-      "targets": [{"expr": "chaos_run_info", "refId": "A"}]
-    }
+    { "type": "timeseries", "title": "Submitted vs Committed", "targets": [{ "expr": "increase(http_server_requests_seconds_count{uri=\"/transactions\"}[1m])", "refId": "A" }, { "expr": "increase(ledger_committed_total[1m])", "refId": "B" }] },
+    { "type": "stat", "title": "Missing ledger", "targets": [{ "expr": "increase(reconciliation_missing_total[5m])", "refId": "A" }] },
+    { "type": "stat", "title": "Duplicates", "targets": [{ "expr": "increase(ledger_duplicate_events_total[5m])", "refId": "A" }] },
+    { "type": "timeseries", "title": "Recovery p95 (recording rule job:ledger_lock_wait:p95)", "targets": [{ "expr": "job:ledger_lock_wait:p95", "refId": "A", "exemplar": true }] },
+    { "type": "logs", "title": "Loki chaos kill logs", "targets": [{ "expr": "{service=~\".*ledger.*\"} |= \"kill\"", "refId": "A", "datasource": { "uid": "loki" } }] },
+    { "type": "traces", "title": "Tempo trace for sampled transaction_id", "targets": [{ "expr": "{resource.service.name=\"ledger-service\"} | transaction_id=\"a1b2c3d4\"", "refId": "A", "datasource": { "uid": "tempo" } }] }
   ],
   "schemaVersion": 39
 }

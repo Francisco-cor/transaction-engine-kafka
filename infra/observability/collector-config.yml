@@ -1,0 +1,61 @@
+# OTEL Collector 0.102.1 — tail sampling + exemplars + W3C baggage
+# Recibe OTLP 4317/4318 de los 6 servicios (OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317)
+# Exporta a Jaeger (traces), Prometheus (exemplars), Loki (logs via OTLP) y Tempo (optional)
+receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: "0.0.0.0:4317" }
+      http: { endpoint: "0.0.0.0:4318" }
+
+processors:
+  batch: { timeout: 200ms, send_batch_size: 512 }
+  tail_sampling:
+    decision_wait: 5s
+    num_traces: 50000
+    expected_new_traces_per_sec: 200
+    policies:
+      - { name: errors, type: status_code, status_code: { status_codes: [ERROR] } }
+      - { name: dlt, type: string_attribute, string_attribute: { key: event_type, values: [TransactionRejected] } }
+      - { name: slow, type: latency, latency: { threshold_ms: 500 } }
+      - { name: probabilistic, type: probabilistic, probabilistic: { sampling_percentage: 10 } }
+  attributes:
+    actions:
+      - { key: service.name, action: upsert, from_context: service.name }
+  resource:
+    attributes:
+      - { key: environment, value: local, action: upsert }
+  span:
+    name: { to_attributes: { rules: [{ pattern: "^(.*)$", replacement: "$1" }] } }
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls: { insecure: true }
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls: { insecure: true }
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    send_timestamps: true
+    enable_open_metrics: true
+  logging: { loglevel: warn }
+
+connectors:
+  spanmetrics:
+    histogram: { explicit: { buckets: [5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2s] } }
+    dimensions:
+      - { name: http.method }
+      - { name: http.route }
+      - { name: transaction_id }
+    exemplars: { enabled: true }
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [tail_sampling, batch]
+      exporters: [otlp/jaeger, otlp/tempo, spanmetrics, logging]
+    metrics:
+      receivers: [otlp, spanmetrics]
+      processors: [batch]
+      exporters: [prometheus]

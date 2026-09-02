@@ -1,0 +1,16 @@
+groups:
+  - name: recording
+    interval: 30s
+    rules:
+      - record: job:http_requests:rate5m
+        expr: sum(rate(http_server_requests_seconds_count[5m])) by (job)
+      - record: job:ledger_lock_wait:p95
+        expr: histogram_quantile(0.95, sum(rate(ledger_lock_wait_seconds_bucket[5m])) by (le))
+      - record: job:ledger_lock_wait:p99
+        expr: histogram_quantile(0.99, sum(rate(ledger_lock_wait_seconds_bucket[5m])) by (le))
+      - record: job:kafka_lag:sum
+        expr: sum(kafka_consumer_lag) by (job)
+      - record: job:outbox_backlog:max
+        expr: max(outbox_pending_events) by (job)
+      - record: job:notifications:rate5m
+        expr: sum(rate(notifications_delivered_total[5m])) by (status)

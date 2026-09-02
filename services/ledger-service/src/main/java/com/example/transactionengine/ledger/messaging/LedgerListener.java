@@ -36,18 +36,23 @@ public class LedgerListener {
     var event = parse(record.value());
     String traceparent = TraceContext.resolve(headerValue(record, "traceparent"));
     String correlationId = headerValue(record, "correlation_id");
-    // Propagate W3C context and correlation for logs/metrics
+    String baggage = headerValue(record, "baggage");
+    // Propagate W3C context, baggage and correlation for logs/metrics + exemplars
     MDC.put("traceparent", traceparent);
     if (correlationId != null) MDC.put("correlation_id", correlationId);
+    if (baggage != null) MDC.put("baggage", baggage);
     TraceContext.putMdc(
         event.transactionId().toString(), event.eventId().toString(), event.accountId());
     TraceContext.tagSpan(tracer, event.transactionId().toString(), event.eventId().toString(), event.accountId());
-    // Also tag current span via tracer if auto-instrumented by Micrometer
+    // Also tag current span via tracer if auto-instrumented by Micrometer — include baggage
     var span = tracer.currentSpan();
     if (span != null) {
       span.tag("messaging.kafka.topic", record.topic());
       span.tag("messaging.kafka.partition", String.valueOf(record.partition()));
       span.tag("messaging.kafka.offset", String.valueOf(record.offset()));
+      if (baggage != null) span.tag("baggage", baggage);
+      // Exemplar: trace_id will be attached to ledger_lock_wait_seconds histogram via Micrometer
+      span.tag("exemplar", "true");
     }
     try {
       ledger.process(event, record.value(), traceparent, correlationId);
@@ -56,6 +61,7 @@ public class LedgerListener {
     } finally {
       MDC.remove("traceparent");
       MDC.remove("correlation_id");
+      MDC.remove("baggage");
       TraceContext.clearMdc();
     }
   }

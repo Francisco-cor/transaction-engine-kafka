@@ -1,33 +1,13 @@
 {
-  "title": "Resilience - Circuit Breaker & Retries",
+  "title": "Resilience - CB and Pool",
   "uid": "resilience-cb",
-  "tags": ["resilience"],
+  "tags": ["resilience", "plg"],
   "panels": [
-    {
-      "type": "stat",
-      "title": "Circuit state (closed/open)",
-      "targets": [{"expr": "resilience4j_circuitbreaker_state", "refId": "A"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "Retry attempts",
-      "targets": [{"expr": "increase(resilience4j_retry_success_total[1m])", "refId": "A"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "Bulkhead saturation",
-      "targets": [{"expr": "resilience4j_bulkhead_available_concurrent_calls", "refId": "A"}]
-    },
-    {
-      "type": "stat",
-      "title": "Pod restarts",
-      "targets": [{"expr": "increase(kube_pod_container_status_restarts_total[5m])", "refId": "A"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "DB pool exhausted",
-      "targets": [{"expr": "hikaricp_connections_pending", "refId": "A"}]
-    }
+    { "type": "stat", "title": "Circuit breaker state", "targets": [{ "expr": "resilience4j_circuitbreaker_state", "refId": "A" }] },
+    { "type": "timeseries", "title": "Retries rate", "targets": [{ "expr": "increase(resilience4j_retry_calls_total[5m])", "refId": "A" }] },
+    { "type": "stat", "title": "Bulkhead saturation", "targets": [{ "expr": "resilience4j_bulkhead_available_concurrent_calls", "refId": "A" }] },
+    { "type": "timeseries", "title": "Hikari pending", "targets": [{ "expr": "hikaricp_connections_pending", "refId": "A" }] },
+    { "type": "timeseries", "title": "HTTP pool pending", "targets": [{ "expr": "hikaricp_connections_active", "refId": "A" }] }
   ],
   "schemaVersion": 39
 }

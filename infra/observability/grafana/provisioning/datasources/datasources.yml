@@ -7,8 +7,30 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: false
+    jsonData:
+      exemplarTraceIdDestinations: [{ name: trace_id, datasourceUid: tempo }]
   - name: Jaeger
     type: jaeger
     access: proxy
     url: http://jaeger:16686
+    editable: false
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      tracesToLogsV2: { datasourceUid: loki, spanStartShift: -1h, spanEndShift: 1h, filterByTraceID: false, filterBySpanID: false }
+      tracesToMetrics: { datasourceUid: prometheus }
+      lokiSearch: { datasourceUid: loki }
+      serviceMap: { datasourceUid: prometheus }
+  - name: Pyroscope
+    type: grafana-pyroscope-datasource
+    access: proxy
+    url: http://pyroscope:4040
     editable: false

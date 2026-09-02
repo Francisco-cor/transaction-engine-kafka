@@ -1,33 +1,12 @@
 {
-  "title": "Kafka - Consumer Lag & DLT",
+  "title": "Kafka - Lag and DLT",
   "uid": "kafka-lag",
-  "tags": ["kafka"],
+  "tags": ["kafka", "plg"],
   "panels": [
-    {
-      "type": "timeseries",
-      "title": "Consumer lag by group/partition",
-      "targets": [{"expr": "kafka_consumer_lag{group=~\".*\"}", "refId": "A"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "DLT rate",
-      "targets": [{"expr": "rate(kafka_listener_DLT_records_total[1m])", "refId": "A"}]
-    },
-    {
-      "type": "stat",
-      "title": "Oldest message age",
-      "targets": [{"expr": "kafka_topic_partition_current_offset - kafka_topic_partition_oldest_offset", "refId": "A"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "Outbox backlog",
-      "targets": [{"expr": "outbox_pending_events", "refId": "A"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "Retries",
-      "targets": [{"expr": "rate(spring_kafka_listener_failed_total[1m])", "refId": "A"}]
-    }
+    { "type": "timeseries", "title": "Consumer lag sum", "targets": [{ "expr": "sum(kafka_consumer_lag) by (group)", "refId": "A" }] },
+    { "type": "stat", "title": "DLT rate", "targets": [{ "expr": "increase(kafka_DLT_records_total[5m])", "refId": "A" }] },
+    { "type": "timeseries", "title": "Outbox backlog max", "targets": [{ "expr": "max(outbox_pending_events) by (job)", "refId": "A" }] },
+    { "type": "timeseries", "title": "Oldest message age", "targets": [{ "expr": "kafka_consumer_oldest_message_age_seconds", "refId": "A" }] }
   ],
   "schemaVersion": 39
 }

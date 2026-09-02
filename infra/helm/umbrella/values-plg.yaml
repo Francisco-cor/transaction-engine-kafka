@@ -1,0 +1,25 @@
+# Helm overlay PLG — habilita Loki/Tempo/Pyroscope + OTEL Collector en K8s
+# Uso: helm upgrade --install transaction-engine ./infra/helm/umbrella -f values.yaml -f values-plg.yaml
+plg:
+  enabled: true
+  otelCollector:
+    image: otel/opentelemetry-collector-contrib:0.102.1
+    config: infra/observability/collector-config.yml
+  loki:
+    image: grafana/loki:2.9.8
+    config: infra/observability/loki-config.yml
+  tempo:
+    image: grafana/tempo:2.4.1
+  pyroscope:
+    image: grafana/pyroscope:1.8.0
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    config: infra/observability/alertmanager.yml
+
+# Grafana datasources PLG se inyectan via provisioning/datasources/datasources.yml
+# Incluye exemplars: prometheus.exemplarTraceIdDestinations -> tempo
+
+# Recursos extra para PLG sidecars (opcional)
+resources:
+  loki: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 500m, memory: 512Mi } }
+  tempo: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 500m, memory: 512Mi } }

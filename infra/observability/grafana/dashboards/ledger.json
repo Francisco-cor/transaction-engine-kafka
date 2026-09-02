@@ -1,36 +1,18 @@
 {
   "title": "Ledger - Financial Correctness",
   "uid": "ledger-correctness",
-  "tags": ["ledger"],
+  "tags": ["ledger", "plg"],
   "panels": [
-    {
-      "type": "timeseries",
-      "title": "Committed vs Rejected per minute",
-      "targets": [
-        {"expr": "increase(ledger_committed_total[1m])", "refId": "A"},
-        {"expr": "increase(ledger_rejected_total[1m])", "refId": "B"}
-      ]
-    },
-    {
-      "type": "stat",
-      "title": "Duplicate events detected",
-      "targets": [{"expr": "increase(ledger_duplicate_events_total[5m])", "refId": "A"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "DB latency (psql) p95",
-      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(ledger_db_duration_seconds_bucket[5m])) by (le))", "refId": "A"}]
-    },
-    {
-      "type": "timeseries",
-      "title": "Lock wait duration",
-      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(ledger_lock_wait_seconds_bucket[5m])) by (le))", "refId": "A"}]
-    },
-    {
-      "type": "stat",
-      "title": "Outbox pending vs published",
-      "targets": [{"expr": "outbox_pending_events", "refId": "A"}]
-    }
+    { "type": "timeseries", "title": "Committed vs Rejected per minute", "targets": [{ "expr": "increase(ledger_committed_total[1m])", "refId": "A" }, { "expr": "increase(ledger_rejected_total[1m])", "refId": "B" }] },
+    { "type": "stat", "title": "Duplicate events detected", "targets": [{ "expr": "increase(ledger_duplicate_events_total[5m])", "refId": "A" }] },
+    { "type": "timeseries", "title": "DB latency (psql) p95", "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(ledger_db_duration_seconds_bucket[5m])) by (le))", "refId": "A" }] },
+    { "type": "timeseries", "title": "Lock wait duration p95/p99 with exemplars", "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(ledger_lock_wait_seconds_bucket[5m])) by (le))", "refId": "A", "exemplar": true }, { "expr": "histogram_quantile(0.99, sum(rate(ledger_lock_wait_seconds_bucket[5m])) by (le))", "refId": "B" }] },
+    { "type": "stat", "title": "Outbox pending vs published", "targets": [{ "expr": "outbox_pending_events", "refId": "A" }, { "expr": "increase(outbox_published_total[5m])", "refId": "B" }] },
+    { "type": "timeseries", "title": "Ledger balance mismatch (should 0)", "targets": [{ "expr": "increase(ledger_balance_mismatch_total[5m])", "refId": "A" }] },
+    { "type": "histogram", "title": "Lock wait exemplars trace_id", "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(ledger_lock_wait_seconds_bucket[5m])) by (le))", "refId": "A", "exemplar": true }] },
+    { "type": "logs", "title": "Loki ledger logs by transaction_id", "targets": [{ "expr": "{service=\"ledger-service\"} | json | transaction_id=~\".+\"", "refId": "A", "datasource": { "uid": "loki" } }] },
+    { "type": "traces", "title": "Tempo ledger spans", "targets": [{ "expr": "{resource.service.name=\"ledger-service\"}", "refId": "A", "datasource": { "uid": "tempo" } }] },
+    { "type": "profile", "title": "Pyroscope lock_wait CPU", "targets": [{ "expr": "process_cpu:cpu:nanoseconds:cpu:nanoseconds", "refId": "A", "datasource": { "uid": "pyroscope" } }] }
   ],
   "schemaVersion": 39
 }
