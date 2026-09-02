@@ -14,6 +14,13 @@
           "latency": 200,
           "jitter": 50
         }
+      },
+      {
+        "name": "partition",
+        "type": "down",
+        "stream": "downstream",
+        "toxicity": 0.0,
+        "attributes": {}
       }
     ]
   },
@@ -31,6 +38,22 @@
         "attributes": {
           "latency": 150,
           "jitter": 30
+        }
+      },
+      {
+        "name": "partition",
+        "type": "down",
+        "stream": "downstream",
+        "toxicity": 0.0,
+        "attributes": {}
+      },
+      {
+        "name": "db_down_15s",
+        "type": "timeout",
+        "stream": "downstream",
+        "toxicity": 0.0,
+        "attributes": {
+          "timeout": 15000
         }
       }
     ]

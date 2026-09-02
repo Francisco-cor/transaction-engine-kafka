@@ -120,7 +120,9 @@ SELECT CASE WHEN (SELECT count(*) FROM transaction_schema.ledger_entries) = (SEL
 
 # 7. Guardar reporte JSON/Markdown, logs, dashboards exportados y trace de una transacción
 echo "[benchmark] 7/7 guardar reporte $REPORT_DIR"
-python3 chaos/suite.py --seed "$SEED" --rate "$RATE" --duration "$DURATION" --kill-every "$KILL_EVERY" --run-id "$RUN_ID" || echo "suite.py returned non-zero (invariants may have failed, see report)"
+EXTRA_ARGS=""
+if [ "${THREE_AZ:-}" = "true" ] || [ "${THREE_AZ:-}" = "1" ]; then EXTRA_ARGS="--three-az"; fi
+python3 chaos/suite.py --seed "$SEED" --rate "$RATE" --duration "$DURATION" --kill-every "$KILL_EVERY" --run-id "$RUN_ID" $EXTRA_ARGS || echo "suite.py returned non-zero (invariants may have failed, see report)"
 
 # Export Grafana dashboards if available
 mkdir -p "$REPORT_DIR/dashboards"
@@ -147,3 +149,18 @@ echo "[benchmark] done run-id $RUN_ID report at $REPORT_DIR/report.json"
 cat "$REPORT_DIR/report.json"
 echo "[benchmark] also invoke suite report at reports/chaos/${RUN_ID}.json"
 ls -lh "$REPORT_DIR/"
+
+# F11: 20k bundle — 7 steps evidence pack
+echo "[benchmark] creating evidence bundle $REPORT_DIR/bundle.zip"
+if command -v zip >/dev/null 2>&1; then
+  (cd "$(dirname "$REPORT_DIR")" && zip -r "$(basename "$REPORT_DIR")/bundle.zip" "$(basename "$REPORT_DIR")" >/dev/null && echo "bundle.zip created $(du -h "$(basename "$REPORT_DIR")/bundle.zip" | cut -f1)")
+  ls -lh "$REPORT_DIR/bundle.zip" 2>/dev/null || echo "bundle.zip not created"
+else
+  echo "zip not found, creating tar.gz"
+  tar -czf "$REPORT_DIR/bundle.tar.gz" -C "$(dirname "$REPORT_DIR")" "$(basename "$REPORT_DIR")" && ls -lh "$REPORT_DIR/bundle.tar.gz"
+fi
+# F11 20k 3AZ marker if requested
+if [ "${THREE_AZ:-}" = "true" ] || [ "${THREE_AZ:-}" = "1" ]; then
+  echo "3az" > "$REPORT_DIR/THREE_AZ"
+  echo "[benchmark] 3AZ distribution marker set"
+fi

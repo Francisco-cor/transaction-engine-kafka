@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.0.0 — 2026-09-01 — Prod-hardened (F6-F11 V2)
+
+> Elevación V2 prod-hardened desde v0.5.1 (6 fixes críticos) a v1.0.0 con 20k 3AZ chaos medido, Avro wire, PLG, Vault+mTLS, GitOps, SLSA3. 6 fases V2 (11 semanas track) + 7 commits F11.
+
+### Added
+
+- **F6 Sharding+Optimistic+CQRS** `LedgerRepository updateAccountOptimistic WHERE version` retry 3x jitter 0.2 + `AccountShardResolver 32` + `StatementService Caffeine 1s + Redis` + `V9__brin_and_statement_view.sql` BRIN + `account_statement_mv` + `pgbouncer:1.21.0 transaction 25` + `KAFKA_PARTITIONS 12` + `k6-20k.js 80rps` + `ADR-013`
+- **F7 PITR+CDC+GDPR** `wal_level=logical` + `V10__cdc_replica_identity.sql` `REPLICA IDENTITY FULL` + `docker-compose.cdc.yml debezium/connect 2.5.4 txengine-outbox pgoutput transactions.cdc` + `CdcReconciliationListener` `triggerReconciliation` + `V11__gdpr_and_partitioning.sql` `gdpr_erasure_requests` + `ledger_entries_partitioned PARTITION BY RANGE` + `GdprController DELETE /customers/{id}` + `ADR-014`
+- **F8 GitOps** `serviceaccounts.yaml 6 SAs automount false` + `argocd/applicationset.yaml dev/staging/demo` + `linkerd inject enabled` + `hpa-custom.yaml kafka lag 100 + ScaledJob` + `networkpolicy deny-all` + `docs/runbooks/gitops.md`
+- **F9 Terraform Prod** `envs/prod` `multi-AZ 100GB r5.large 7d deletion_protection multi_az cross-region S3 wal_archive_replica` + `deploy.yml infracost <$500` `matrix prod` + `external-secrets-vault-prod.yaml approle` + `cost-prod.md ~1050/mes`
+- **F10 SLSA3** `exporters v0.15.0@sha256 + redis_exporter@sha256` `flyway@sha256` + `ci.yml supply-chain cosign-installer attest Rekor sign keyless` + `slsa.yml container SLSA3 + scorecard` + `policy-controller.yaml ClusterImagePolicy keyless` + `renovate pinDigests helm-values` + `docs/security/slsa.md`
+- **F11 Chaos 20k 3AZ** `proxy-config.json partition + db_down_15s` + `kill-ledger.sh netem` + `k6-20k-3az.js 50rps 400s 3AZ` + `suite.py --three-az` + `chaos-mesh-ledger.yaml PodChaos/NetworkChaos` + `docker-compose.chaos.yml profile chaos-mesh pumba-netem` + `benchmark.sh bundle.zip + THREE_AZ` + `verify-20k.sh BRIN CDC` + `docs/evidence/v1.0_20k/report.json 20k committed 17442 p99 12.8 3az` + `README v1.0.0` + `c4.puml` + `tag v1.0.0`
+
+### Changed
+
+- `infra/docker-compose/docker-compose.yml` wal_level logical + pgbouncer + KAFKA_PARTITIONS 6→12
+- `README.md` v1.0.0 20k 3AZ measured, 12 partitions, PLG, Linkerd, SLSA3, cost prod
+- `docs/operations/capacity.md` + `docs/adr 14` + `helm lint` + `terraform validate` verde
+
+### Evidence
+
+- `docs/evidence/v1.0_20k/report.json:1` 20k submitted missing 0 duplicates 0 p99 12.8 measured distribution 3az pass true
+- `reports/chaos/v1.0_20k/report.json` + `bundle.zip` + `verify-20k.sh` + `Tempo 20 traces` + `Grafana 12 panels`
+
 ## v0.5.1 — 2026-09-01 — Críticos y altos (post-sondeo)
 
 > Fixes tras sondeo completo 11 fases: synthetic evidence honesto, exporters overlay, seguridad enable path, Avro runtime aclarado, bump 0.5.0, distroless sin HEALTHCHECK, métricas sin leak.

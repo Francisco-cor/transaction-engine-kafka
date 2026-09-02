@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends tini && cp /usr
 FROM gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d
 WORKDIR /app
 COPY --from=tini-stage /tini /usr/bin/tini
-COPY --from=build /workspace/services/ledger-service/target/ledger-service-0.5.0.jar app.jar
+COPY --from=build /workspace/services/ledger-service/target/ledger-service-1.0.0.jar app.jar
 USER nonroot:nonroot
 EXPOSE 8082
 ENTRYPOINT ["/usr/bin/tini", "--", "java", "-jar", "/app/app.jar"]

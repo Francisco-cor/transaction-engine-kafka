@@ -115,6 +115,8 @@ def parse_args():
     p.add_argument("--run-id", type=str, default=None, dest="run_id", help="ULID run-id")
     p.add_argument("--base-url", type=str, default="http://localhost:8080")
     p.add_argument("--prom-url", type=str, default="http://localhost:9090")
+    p.add_argument("--three-az", action="store_true", dest="three_az", help="F11 3AZ distribution (accounts hot-account-001-a/b/c)")
+    p.add_argument("--az-count", type=int, default=3, help="AZ count for 3AZ")
     return p.parse_args()
 
 def main():
@@ -123,7 +125,7 @@ def main():
     seed = args.seed
     random.seed(seed)
 
-    print(f"[suite] run-id={run_id} seed={seed} rate={args.rate} duration={args.duration}s kill-every={args.kill_every}s")
+    print(f"[suite] run-id={run_id} seed={seed} rate={args.rate} duration={args.duration}s kill-every={args.kill_every}s three_az={args.three_az}")
     start = datetime.now(timezone.utc)
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     report_dir = REPORTS_DIR / run_id
@@ -138,6 +140,8 @@ def main():
         "rate": args.rate,
         "duration": args.duration,
         "kill_every": args.kill_every,
+        "three_az": args.three_az,
+        "az_count": args.az_count,
         "base_url": args.base_url,
         "started_at": start.isoformat(),
         "compose": DEFAULT_COMPOSE,
@@ -232,6 +236,7 @@ def main():
         "started_at": start.isoformat(),
         "finished_at": datetime.now(timezone.utc).isoformat(),
         "config": config,
+        "distribution": "3az" if args.three_az else "single",
         "synthetic": synthetic,
         "evidence_type": "synthetic" if synthetic else "measured",
         "recovery_source": recovery_source,

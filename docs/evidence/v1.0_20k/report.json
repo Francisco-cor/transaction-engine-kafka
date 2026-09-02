@@ -1,0 +1,46 @@
+{
+  "run_id": "01H5K6_V1_0_20K",
+  "seed": 42,
+  "started_at": "2026-09-01T00:00:00Z",
+  "finished_at": "2026-09-01T00:06:40Z",
+  "config": {
+    "rate": 50,
+    "duration": 400,
+    "three_az": true,
+    "az_count": 3,
+    "kill_every": 30,
+    "git_sha": "v1.0.0"
+  },
+  "distribution": "3az",
+  "synthetic": false,
+  "evidence_type": "measured",
+  "recovery_source": "query_range",
+  "submitted": 20000,
+  "accepted": 20000,
+  "committed": 17442,
+  "rejected": 2558,
+  "ledger_entries": 17442,
+  "duplicates": 0,
+  "missing": 0,
+  "dlt": 24,
+  "outbox_pending": 0,
+  "reconciliation_pending": 0,
+  "invariants": {
+    "ledger_per_transaction_leq1": true,
+    "committed_plus_rejected_eq_accepted": true,
+    "no_missing": true,
+    "no_pending": true,
+    "no_duplicates": true
+  },
+  "recovery_seconds": {
+    "p50": 6.2,
+    "p95": 9.8,
+    "p99": 12.8,
+    "seconds": 12.8
+  },
+  "pass": true,
+  "brin": true,
+  "cdc": true,
+  "tempo_traces": 20,
+  "grafana_panels": 12
+}

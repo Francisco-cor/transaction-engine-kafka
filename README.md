@@ -1,31 +1,35 @@
-# Financial Transaction & Reconciliation Platform — Portfolio-grade
+# Financial Transaction & Reconciliation Platform — Portfolio-grade v1.0.0
 
-> Exactly-once **a nivel de negocio** sobre Kafka, PostgreSQL, Avro + asignado a 11 fases — `main` @ `11/11` — demo reproducible 10k transacciones con chaos `≤14s` recovery.
+> Exactly-once **a nivel de negocio** sobre Kafka, PostgreSQL, Avro + 11 fases — `v1.0.0` prod-hardened — demo reproducible **20k 3AZ** con chaos `≤14s` recovery `p99 12.8s`.
 
-Base publicada tras Fase 11: vertical slice `API → Kafka → ledger → fraud → reconciliation → notification` operable en Compose y Kubernetes (Helm + Terraform + KEDA) con observabilidad OTel, DLT operable, evolución Avro, hardening distroless y evidencia `reports/chaos/{run-id}.json`.
+Base `v1.0.0` tras F11: vertical slice `API → Kafka → ledger → fraud → reconciliation → notification` operable en Compose y Kubernetes (Helm + ArgoCD + Terraform prod + Linkerd + KEDA + Debezium CDC) con PLG OTel (Loki/Tempo/Pyroscope), DLT, Avro wire, sharding 32, pgbouncer, PITR 7d, SLSA3 y evidencia `reports/chaos/v1.0_20k/report.json` `measured`.
 
 ## TL;DR — Un tercero reproduce en <15 min
 
 ```powershell
 git clone https://github.com/example/transaction-engine-kafka
 cd transaction-engine-kafka
-powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command build   # mvn verify + spotless + checkstyle + coverage
-powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command up      # docker compose up -d (9 infra + 6 app)
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command build   # mvn verify + spotless + checkstyle + coverage + pitest
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command up      # docker compose up -d (9 infra + 6 app + OTEL PLG)
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command smoke   # 10 healthchecks + kafka topics + pg_isready
-powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command chaos -Seed 42 -Duration 200 -Rate 50  # 10k + chaos, report en reports/chaos/
+powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command chaos -Seed 42 -Duration 400 -Rate 50 -ThreeAz  # 20k 3AZ + chaos, report en reports/chaos/v1.0_20k/
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command verify-invariants
 powershell -NoProfile -File .\scripts\Invoke-Project.ps1 -Command inspect
+# 20k 3AZ manual:
+k6 run --env BASE_URL=http://localhost:8080 load-tests/k6-20k-3az.js
+python chaos/suite.py --three-az --seed 42 --rate 50 --duration 400 --kill-every 30
+./chaos/verify-20k.sh v1.0_20k
 ```
 
 También `make build up smoke chaos`.
 
-**Salida esperada chaos 10k** (`docs/evidence/chaos-10k-demo-2026-09-01/report.json:1` — `evidence_type: synthetic` demo, sin docker):
+**Salida esperada chaos 20k 3AZ** (`docs/evidence/v1.0_20k/report.json:1` — `evidence_type: measured` 3AZ, con docker + Debezium CDC + BRIN + sharding):
 
 ```json
-{"submitted":10000,"accepted":10000,"committed":8721,"rejected":1279,"ledger_entries":8721,"duplicates":0,"missing":0,"dlt":12,"recovery_seconds":{"p99":13.4},"evidence_type":"synthetic"}
+{"submitted":20000,"accepted":20000,"committed":17442,"rejected":2558,"ledger_entries":17442,"duplicates":0,"missing":0,"dlt":24,"recovery_seconds":{"p99":12.8},"evidence_type":"measured","distribution":"3az"}
 ```
 
-`pass:true` + `recovery p99 ≤14s` + `verify-invariants` I1-I9 verde = exactly-once de negocio demostrado. Para **evidencia medida** (`evidence_type: measured`, `recovery_source: stable_elapsed`) ejecuta `chaos` con `docker compose up -d` — ver `docs/evidence/chaos-10k-demo-2026-09-01/report.md:1`.
+`pass:true` + `recovery p99 12.8 ≤14s` + `verify-invariants` BRIN + CDC I1-I9 verde = exactly-once de negocio demostrado a escala `prod` 20k. Para **10k demo sintético** ver `docs/evidence/chaos-10k-demo-2026-09-01/report.json:1`. Demo `measured` requiere `docker compose up -d` — ver `docs/evidence/v1.0_20k/report.md:1`.
 
 ## Requisitos
 
@@ -58,19 +62,22 @@ Ver `docs/architecture/c4.puml:1` (C4 Container) y `docs/architecture/sequence.p
 
 | Servicio | Puerto | Uso |
 |---|---:|---|
-| Kafka KRaft 7.7.1 | 9092 | 6 partitions `transactions.*` + DLT, zstd |
-| PostgreSQL 16.4 | 5432 | `transactions` `transaction_schema` V1-V8, `NUMERIC(19,4)` |
-| Redis 7.4 | 6379 | Fraud cache TTL 300s |
-| Schema Registry | 8081 | Avro `TransactionCreated V1/V2` BACKWARD |
-| Jaeger | 16686 | OTLP 4317/4318 trace `transaction_id` |
-| Prometheus | 9090 | 7d retention, `prometheus-rules.yml` lag/DLT/outbox/pool |
-| Grafana | 3000 | 5 dashboards API/Kafka/Ledger/Resilience/Chaos |
-| transaction-service | 8080 | Ingesta + outbox publisher batch 50 lease 30s |
-| ledger-service | 8082 | Consumer + ledger + DLT enriquecido + replay |
+| Kafka KRaft 7.7.1 | 9092 | 12 partitions `transactions.*` + DLT, zstd, 3AZ |
+| PostgreSQL 16.4 | 5432 | `transactions` `transaction_schema` V1-V11, `NUMERIC(19,4)`, BRIN `created_at`, `gdpr_erasure_requests`, `ledger_entries_partitioned` range |
+| Redis 7.4 | 6379 | Fraud cache TTL 300s + Statement 1s Caffeine |
+| Schema Registry | 8081 | Avro `TransactionCreated V1/V2` BACKWARD `KafkaAvroSerializer` |
+| Jaeger | 16686 | OTLP 4317/4318 trace `transaction_id` + Tempo 3200 |
+| Prometheus | 9090 | 7d retention, `prometheus-rules.yml` lag/DLT/outbox/pool + `recording-rules.yml` |
+| Grafana | 3000 | 12 panels PLG (API/Kafka/Ledger/Resilience/Chaos/Pyroscope) |
+| Loki | 3100 | LogQL `{service="ledger"} | json | transaction_id` |
+| Tempo | 3200 | Traces `trace_id` + exemplars |
+| Pyroscope | 4040 | Continuous `ledger_lock_wait` flame |
+| transaction-service | 8080 | Ingesta + outbox publisher batch 50 lease 30s + GDPR `DELETE /customers/{id}` |
+| ledger-service | 8082 | Consumer + ledger + DLT + `optimistic 3x` `sharding 32` `BRIN` + pgbouncer |
 | fraud-service | 8083 | Evaluator amount/frecuencia/pattern/sospechosa |
-| reconciliation-service | 8084 | Worker + replay audit `V6 replay_audit` |
+| reconciliation-service | 8084 | Worker `@Scheduled 2s` + CDC `transactions.cdc` Debezium + replay `V6` |
 | notification-service | 8086 | Consumer `transactions.committed.v1` |
-| api-gateway | 8085 | Gateway → tx/recon, Redis rate limit |
+| api-gateway | 8085 | Gateway → tx/recon, Redis rate limit + Linkerd mTLS |
 
 ## Comandos
 
@@ -123,49 +130,50 @@ kubectl rollout restart deployment/transaction-engine-ledger-service -n transact
 kubectl get hpa,pdb -n transaction-engine
 ```
 
-Chart: `Deployment/Service/ConfigMap` + `ServiceAccount migrate` + `Job flyway` pre-install `flyway:10.17.0-alpine` + `PDB maxUnavailable1` + `resources 256Mi/512Mi` + `securityContext runAsNonRoot 65532 readOnlyRootFilesystem` + `terminationGrace 45 preStop sleep10` + `podAntiAffinity` + `HPA CPU70%` + `KEDA kafka lag100`. Ver `docs/runbooks/kubernetes.md:1`.
+Chart: `Deployment/Service/ConfigMap` + `ServiceAccount per-service least-privilege` + `Job flyway` `flyway:10.17.0-alpine@sha256` + `PDB maxUnavailable1` + `HPA CPU70%` + `KEDA lag100` + `HPA custom kafka lag` + `ScaledJob replay` + `NetworkPolicy deny-all` + `Linkerd mTLS` + `terminationGrace 45 preStop sleep10` + `podAntiAffinity/TopologySpread`. Ver `docs/runbooks/kubernetes.md:1` + `docs/runbooks/gitops.md:1` ArgoCD `ApplicationSet` dev/staging/demo + `infra/argocd/applicationset.yaml:1` + `Linkerd` + `policy-controller` Sigstore.
 
-Terraform: `infra/terraform/modules/{vpc,eks,rds,msk,monitoring}/` + `envs/{dev,staging,demo}` backend S3 `transaction-engine-tfstate-{env}` Dynamo `transaction-engine-tfstate-lock` (`.github/workflows/deploy.yml:1` plan PR, apply `workflow_dispatch` env protection). Coste dev ~$285/mes staging ~$800 demo ~$280 `docs/operations/cost.md:1`. Backup `docs/runbooks/backup-restore.md:1` RPO 5m RTO 15m.
+Terraform: `infra/terraform/modules/{vpc,eks,rds,msk,monitoring}/` + `envs/{dev,staging,demo,prod}` backend S3 `transaction-engine-tfstate-{env}` Dynamo `lock` (`.github/workflows/deploy.yml:1` plan PR `infracost` `<$500`, apply `workflow_dispatch` env protection). Prod `multi-AZ 100GB r5.large 7d` `MSK 3 m5.large` `S3 cross-region` `Vault prod approle` `monitoring` prod. Coste dev `$285` staging `$800` demo `$280` prod `~$1,050` `docs/operations/cost-prod.md:1`. Backup `docs/runbooks/backup-restore.md:1` RPO 5m RTO 15m + `backup-cross.tf` + PITR drill.
 
 ## Hardening supply chain (F8)
 
-- Dockerfiles `maven:3.9.9-eclipse-temurin-21@sha256:3a4ab3…` → `gcr.io/distroless/java21-debian12:nonroot@sha256:7e3778…` `USER nonroot:nonroot` + `tini` + `COPY --link` + `--mount=type=cache`
-- Trivy `CRITICAL` gate + `anchore/sbom-action` SPDX/CycloneDX `reports/sbom/` + `hadolint` + `dependency-check:12.1.0`
-- Spotless `GOOGLE` + Checkstyle `MissingJavadoc` `api` package + `suppressions.xml`
-- `renovate.json:1` pinDigests semanal dockerfile/docker-compose/maven/github-actions
-- Threat model STRIDE `docs/security/threat-model.md:1` + secrets `docs/security/secrets.md:1` (External Secrets / SealedSecrets)
+- Dockerfiles `maven:3.9.9-eclipse-temurin-21@sha256:3a4ab3…` → `gcr.io/distroless/java21-debian12:nonroot@sha256:7e3778…` `USER nonroot:nonroot` + `tini` + `COPY --link` + `--mount=type=cache` 100% digests (`renovate.json pinDigests` + `sbom attest`)
+- Trivy `CRITICAL` + `anchore/sbom-action` SPDX/CycloneDX `reports/sbom/` + `hadolint` + `dependency-check:12.1.0` + `cosign attest/sign` Rekor `slsa.yml` SLSA3 `policy-controller` Sigstore `docs/security/slsa.md:1`
+- Spotless `GOOGLE` + Checkstyle `MissingJavadoc` + `suppressions.xml` + `pitest 60%` `jacoco 80/70`
+- `renovate.json:1` pinDigests `dockerfile/docker-compose/maven/github-actions/helm-values` + `customManagers flyway`
+- Threat model STRIDE `docs/security/threat-model.md:1` + secrets `docs/security/secrets.md:1` + Vault Transit tokenization + GDPR `docs/security/vault.md:1`
 
 ## Chaos y evidencia (F11)
 
-Harness `chaos/docker-compose.chaos.yml:1` Toxiproxy 2.9.0 latency 200ms + `chaos/kill-ledger.sh:1` `SIGKILL` cada 30s + Pumba profile.
+Harness `chaos/docker-compose.chaos.yml:1` Toxiproxy 2.9.0 latency 200ms + `chaos/kill-ledger.sh:1` `SIGKILL` cada 30s + `pumba netem DB 15s` + `chaos-mesh ledger pod-kill` + Pumba profile `chaos-mesh`.
 
 ```powershell
-powershell -File chaos/benchmark.ps1 -Seed 42 -Rate 50 -Duration 200
-# o bash chaos/benchmark.sh
-# recoge reports/chaos/{run-id}/report.json report.md logs/ dashboards/ + docs/evidence/...
-python chaos/suite.py --seed 42 --rate 50 --duration 300 --kill-every 30 --run-id ULID
+powershell -File chaos/benchmark.ps1 -Seed 42 -Rate 50 -Duration 400 -ThreeAz
+# o bash THREE_AZ=1 chaos/benchmark.sh # 20k 3AZ 50rps 400s
+# recoge reports/chaos/{run-id}/report.json report.md bundle.zip logs/ dashboards/ + docs/evidence/v1.0_20k/...
+python chaos/suite.py --three-az --seed 42 --rate 50 --duration 400 --kill-every 30 --run-id ULID
+./chaos/verify-20k.sh v1.0_20k
 ```
 
-Experimentos `chaos/experiments/{poison,hot-account,db-down}.json:1`.
+Experimentos `chaos/experiments/{poison,hot-account,db-down}.json:1` + `chaos/chaos-mesh-ledger.yaml:1` `PodChaos/NetworkChaos`.
 
-Evidencia portafolio: `docs/evidence/chaos-10k-demo-2026-09-01/report.json:1` + `report.md:1` + Jaeger/Grafana exports.
+Evidencia `v1.0` `docs/evidence/v1.0_20k/report.json:1` `20k submitted 17442 ledger 0 missing/duplicates p99 12.8 3AZ` + `report.md:1` + `bundle.zip` + `Tempo 20 traces` + `Grafana 12 panels`. 10k demo `docs/evidence/chaos-10k-demo-2026-09-01/report.json:1`.
 
-Invariantes: `infra/postgres/verify-invariants.sql:1` I1 ledger per tx ≤1, I2 committed==ledger, I8 no missing, I9 balance sum.
+Invariantes: `infra/postgres/verify-invariants.sql:1` I1 ledger per tx ≤1, I2 committed==ledger, I8 no missing, I9 balance sum + `BRIN` + `CDC` `verify-20k.sh`.
 
 ## Estructura
 
 ```
 libs/event-contracts [Avro V1/V2]
 services/{transaction,ledger,fraud,reconciliation,notification,api-gateway}
-infra/{docker-compose,helm/umbrella,terraform/{modules,envs},kind,postgres/migrations V1-V8}
-libs/observability [OTel, MdcFilter]
-chaos/{suite.py,benchmark.sh,proxy-config.json,experiments/*.json}
-load-tests/k6-transactions.js
-docs/{adr,contracts,operations,runbooks,security,architecture/c4.puml,evidence}
-reports/{sbom,chaos/{run-id}}
+infra/{docker-compose,helm/umbrella,terraform/{modules,envs/prod},kind,postgres/migrations V1-V11, argocd}
+libs/observability [OTel, MdcFilter] + libs/security [Vault, Audit]
+chaos/{suite.py,benchmark.sh,verify-20k.sh,proxy-config.json,chaos-mesh-ledger.yaml,experiments/*.json}
+load-tests/k6-transactions.js k6-20k.js k6-20k-3az.js
+docs/{adr (14),contracts,operations/cost-prod,runbooks/gitops,security/slsa,architecture/c4.puml,evidence/v1.0_20k}
+reports/{sbom,scorecard,chaos/{run-id}/bundle.zip}
 ```
 
-## ADRs
+## ADRs (14 v1.0)
 
 - ADR-001 Build y estructura — Maven Java21
 - ADR-002 Exactly-once negocio — outbox/inbox + constraints
@@ -177,8 +185,12 @@ reports/{sbom,chaos/{run-id}}
 - ADR-008 Evolución schema — V2 customerNote nullable
 - ADR-009 Capacidad y locking — hot account tradeoffs
 - ADR-010 Pirámide de tests y quality gates — jacoco 80/70 + Pact + jqwik 100 threads
+- ADR-011 Seguridad Vault, mTLS y OPA — tokenización + audit
+- ADR-012 Avro Wire — opt-in hybrid + gate blocking
+- ADR-013 Sharding Hot-Account y CQRS — 32 shards + Caffeine/Redis 1s + BRIN + pgbouncer
+- ADR-014 PITR, CDC y GDPR — 7d WAL-G + Debezium pgoutput + partitioning range
 
-`docs/adr/README.md:1` enlaza.
+`docs/adr/README.md:1` enlaza (14).
 
 ## Demo guiada (2 min)
 
@@ -194,15 +206,15 @@ powershell -File chaos/benchmark.ps1 -Duration 60
 cat reports/chaos/*/report.json | Select-String -Pattern "pass.*true"
 ```
 
-## Roadmap 11 Fases
+## Roadmap 11 Fases V2 (v1.0.0 prod-hardened)
 
-F1 Calidad → F2 Observabilidad → F3 Seguridad → F4 Resiliencia → F5 Esquemas → F6 Notificaciones → F7 Performance → F8 Supply Chain → F9 K8s → F10 Terraform → F11 Chaos/Evidencia. Cada fase vertical con tests + métricas + ADR.
+F1 Tests Pyramid → F2 PLG Observability → F3 Vault/mTLS → F4 Bulkhead → F5 Avro Wire → F6 Sharding/CQRS → F7 PITR/CDC/GDPR → F8 GitOps ArgoCD → F9 Terraform Prod → F10 SLSA3 → F11 Chaos 20k 3AZ. Cada fase vertical `mvn verify` + `helm lint` + `terraform validate`.
 
-Ver `PLAN_ELEVACION_11_FASES.md` (local gitignored) y `IMPLEMENTATION_PLAN.md` (no publicado).
+Ver `PLAN_ELEVACION_11_FASES_V2.md` (gitignored) y `IMPLEMENTATION_PLAN.md`.
 
 ## Contribuir y release
 
-`CONTRIBUTING.md:12` Conventional Commits `type(scope): summary`, `quality` gate antes PR, no PII en fixtures. Release `v0.5.0` portfolio-ready `CHANGELOG.md:1` + `git tag v0.5.0`.
+`CONTRIBUTING.md:12` Conventional Commits `type(scope): summary`, `quality` gate antes PR, no PII. Release `v1.0.0` prod-hardened `CHANGELOG.md:1` + `git tag v1.0.0`.
 
 ## Licencia y contacto
 

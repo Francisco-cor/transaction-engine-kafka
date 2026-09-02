@@ -27,7 +27,18 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: ["--debug", "--interval", "30s", "kill", "--signal", "SIGKILL", "re2:transaction-engine-kafka-ledger-service.*"]
-    profiles: ["pumba"]
+    profiles: ["pumba", "chaos-mesh"]
+    depends_on:
+      - toxiproxy
+
+  # Chaos-mesh profile for local compose — pumba netem 15s partition for postgres (simulates K8s Chaos Mesh NetworkChaos)
+  pumba-netem:
+    image: gaiaadm/pumba:0.9.8
+    hostname: pumba-netem
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: ["--interval", "60s", "netem", "--duration", "15s", "--tc-image", "gaiadocker/iproute2", "delay", "--time", "200", "--jitter", "50", "re2:transaction-engine-kafka-postgres.*"]
+    profiles: ["chaos-mesh"]
     depends_on:
       - toxiproxy
 

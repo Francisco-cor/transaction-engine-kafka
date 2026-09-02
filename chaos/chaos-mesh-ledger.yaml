@@ -1,0 +1,62 @@
+# Chaos Mesh PodChaos for ledger-service — kills ledger pods every 30s (F11)
+# Requires Chaos Mesh installed: helm repo add chaos-mesh https://charts.chaos-mesh.org && helm upgrade --install chaos-mesh chaos-mesh/chaos-mesh -n chaos-mesh --create-namespace
+# Apply: kubectl apply -f chaos/chaos-mesh-ledger.yaml -n transaction-engine
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: ledger-pod-kill
+  namespace: transaction-engine
+  labels:
+    app.kubernetes.io/part-of: transaction-engine
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    labelSelectors:
+      app.kubernetes.io/component: ledger-service
+    namespaces:
+      - transaction-engine
+  scheduler:
+    cron: "@every 30s"
+  duration: "10s"
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: postgres-partition-15s
+  namespace: transaction-engine
+spec:
+  action: partition
+  mode: one
+  selector:
+    labelSelectors:
+      app.kubernetes.io/component: postgres
+    namespaces:
+      - transaction-engine
+  direction: both
+  target:
+    selector:
+      labelSelectors:
+        app.kubernetes.io/component: ledger-service
+    mode: one
+  duration: "15s"
+  scheduler:
+    cron: "@every 2m"
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: ledger-cpu-stress
+  namespace: transaction-engine
+spec:
+  mode: one
+  selector:
+    labelSelectors:
+      app.kubernetes.io/component: ledger-service
+  stressors:
+    cpu:
+      workers: 1
+      load: 50
+  duration: "30s"
+  scheduler:
+    cron: "@every 5m"

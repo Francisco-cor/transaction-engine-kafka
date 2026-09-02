@@ -6,7 +6,7 @@
 
   <groupId>com.example.transactionengine</groupId>
   <artifactId>transaction-engine-kafka</artifactId>
-  <version>0.5.0</version>
+  <version>1.0.0</version>
   <packaging>pom</packaging>
   <name>transaction-engine-kafka</name>
   <description>Financial transaction and reconciliation platform</description>
