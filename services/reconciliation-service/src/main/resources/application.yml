@@ -52,10 +52,26 @@ reconciliation:
   pending-retry-seconds: ${RECONCILIATION_PENDING_RETRY_SECONDS:5}
   batch-size: ${RECONCILIATION_BATCH_SIZE:100}
   replay-topic: ${RECONCILIATION_REPLAY_TOPIC:transactions.created.v1}
+  cdc:
+    enabled: ${RECONCILIATION_CDC_ENABLED:false}
+    topic: ${RECONCILIATION_CDC_TOPIC:transactions.cdc}
   security:
     enabled: ${RECONCILIATION_SECURITY_ENABLED:false}
 
 spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${RECONCILIATION_CONSUMER_GROUP:reconciliation-service}
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        isolation.level: read_committed
+    listener:
+      ack-mode: manual_immediate
+      missing-topics-fatal: false
   security:
     oauth2:
       resourceserver:

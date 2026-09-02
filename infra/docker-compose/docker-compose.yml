@@ -75,6 +75,7 @@ services:
     hostname: postgres
     ports:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=5", "-c", "max_wal_senders=5"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-transactions}
       POSTGRES_USER: ${POSTGRES_ADMIN_USER:-postgres}
@@ -215,6 +216,10 @@ services:
       dockerfile: services/reconciliation-service/Dockerfile
     stop_grace_period: 45s
     depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-topics:
+        condition: service_completed_successfully
       postgres-migrate:
         condition: service_completed_successfully
     ports:
@@ -223,6 +228,9 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-transactions}
       DB_USER: ${POSTGRES_APP_USER:-transaction_app}
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      RECONCILIATION_CDC_ENABLED: ${RECONCILIATION_CDC_ENABLED:-false}
+      RECONCILIATION_CDC_TOPIC: ${RECONCILIATION_CDC_TOPIC:-transactions.cdc}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       DB_POOL_MAX_SIZE: 5
       DB_CONNECTION_TIMEOUT_MS: 3000

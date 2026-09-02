@@ -74,7 +74,7 @@ module "rds" {
   db_name          = var.db_name
   instance_class   = var.rds_instance_class
   allocated_storage = 20
-  backup_retention_period = 1
+  backup_retention_period = 7
   deletion_protection = false
   tags             = local.common_tags
 }

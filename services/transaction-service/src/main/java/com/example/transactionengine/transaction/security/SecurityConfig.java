@@ -33,6 +33,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/transactions/**")
                     .hasAnyAuthority("SCOPE_transactions:write", "SCOPE_transactions:read")
+                    .requestMatchers("/customers/**")
+                    .hasAnyAuthority("SCOPE_admin:gdpr", "SCOPE_gdpr:write")
                     .anyRequest()
                     .authenticated())
         .oauth2ResourceServer(

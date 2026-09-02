@@ -60,6 +60,11 @@ public class ReconciliationApplicationService {
     }
   }
 
+  @Transactional
+  public void triggerReconciliation(UUID transactionId) {
+    reconcileOne(transactionId);
+  }
+
   public ReconciliationResultView get(UUID transactionId) {
     return repository
         .findResult(transactionId)

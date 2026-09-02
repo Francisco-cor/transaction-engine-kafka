@@ -1,0 +1,86 @@
+# CDC overlay — Debezium outbox → Kafka (F7)
+# Uso: docker compose -f infra/docker-compose/docker-compose.yml -f infra/docker-compose/docker-compose.cdc.yml up -d
+# Requiere postgres wal_level=logical (ya en docker-compose.yml) + V10__cdc.sql REPLICA IDENTITY FULL
+services:
+  debezium:
+    image: debezium/connect:2.5.4.Final
+    hostname: debezium
+    ports:
+      - "${DEBEZIUM_PORT:-8088}:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:29092
+      GROUP_ID: debezium-connect
+      CONFIG_STORAGE_TOPIC: debezium_connect_configs
+      OFFSET_STORAGE_TOPIC: debezium_connect_offsets
+      STATUS_STORAGE_TOPIC: debezium_connect_status
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_OFFSET_FLUSH_INTERVAL_MS: 1000
+      CONNECT_REST_ADVERTISED_HOST_NAME: debezium
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      kafka-topics:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8083/connectors >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  debezium-init:
+    image: curlimages/curl:8.5.0
+    depends_on:
+      debezium:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Registering Debezium Postgres connector..."
+        # Wait for connect REST
+        for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://debezium:8083/connectors && break || sleep 5; done
+        # Create connector if not exists (idempotent)
+        if curl -fsS http://debezium:8083/connectors/txengine-outbox | grep -q txengine-outbox; then
+          echo "Connector txengine-outbox already exists"
+        else
+          curl -fsS -X POST http://debezium:8083/connectors -H "Content-Type: application/json" -d '{
+            "name": "txengine-outbox",
+            "config": {
+              "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+              "database.hostname": "postgres",
+              "database.port": "5432",
+              "database.user": "${POSTGRES_MIGRATOR_USER:-transaction_migrator}",
+              "database.password": "${POSTGRES_MIGRATOR_PASSWORD:-transaction_migrator_dev}",
+              "database.dbname": "${POSTGRES_DB:-transactions}",
+              "database.serverName": "txengine",
+              "schema.include.list": "transaction_schema",
+              "table.include.list": "transaction_schema.outbox_events,transaction_schema.transactions,transaction_schema.ledger_entries",
+              "plugin.name": "pgoutput",
+              "slot.name": "debezium_txengine",
+              "publication.name": "debezium_publication",
+              "publication.autocreate.mode": "filtered",
+              "tombstones.on.delete": "false",
+              "transforms": "outbox",
+              "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+              "transforms.outbox.route.by.field": "aggregate_id",
+              "transforms.outbox.route.topic.replacement": "transactions.cdc",
+              "transforms.outbox.table.field.event.id": "outbox_id",
+              "transforms.outbox.table.field.event.key": "aggregate_id",
+              "transforms.outbox.table.fields.additional.placement": "event_type:header:eventType,schema_version:header:schemaVersion",
+              "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+              "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+              "value.converter.schemas.enable": "false"
+            }
+          }' && echo "Connector created" || echo "Connector creation failed (may already exist)"
+        fi
+        echo "Debezium init done"
+    restart: "no"
+    profiles: ["cdc"]
