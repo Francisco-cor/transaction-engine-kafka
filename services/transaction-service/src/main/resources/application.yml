@@ -38,10 +38,12 @@ spring:
       # Avro es contrato build-time (libs/event-contracts/src/main/avro/*.avsc + SchemaCompatibilityTest).
       # Para activar Avro real: value-serializer=io.confluent.kafka.serializers.KafkaAvroSerializer + specific.avro.reader=true
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      transaction-id-prefix: ${KAFKA_TRANSACTION_ID_PREFIX:}
       properties:
         enable.idempotence: true
         acks: all
         compression.type: zstd
+        transactional.id: ${KAFKA_TRANSACTION_ID_PREFIX:}
         schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
         auto.register.schemas: false
         use.latest.version: true
@@ -80,7 +82,7 @@ management:
         enabled: true
       group:
         readiness:
-          include: readinessState,db,kafka
+          include: readinessState,db,kafka,outbox
   health:
     livenessstate:
       enabled: true

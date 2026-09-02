@@ -110,6 +110,8 @@ services:
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       OUTBOX_PUBLISHER_ENABLED: "true"
+      DB_POOL_MAX_SIZE: 20
+      DB_CONNECTION_TIMEOUT_MS: 3000
       TRANSACTION_SECURITY_ENABLED: ${TRANSACTION_SECURITY_ENABLED:-false}
       JWT_ISSUER_URI: ${JWT_ISSUER_URI:-}
       JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-}
@@ -141,6 +143,8 @@ services:
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       LEDGER_OUTBOX_PUBLISHER_ENABLED: "true"
+      DB_POOL_MAX_SIZE: 10
+      DB_CONNECTION_TIMEOUT_MS: 3000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_TRACES_EXPORTER: otlp
       PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
@@ -170,6 +174,8 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_dev}@redis:6379
       FRAUD_OUTBOX_PUBLISHER_ENABLED: "true"
+      DB_POOL_MAX_SIZE: 10
+      DB_CONNECTION_TIMEOUT_MS: 3000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
 
@@ -188,6 +194,8 @@ services:
       DB_USER: ${POSTGRES_APP_USER:-transaction_app}
       DB_PASSWORD: ${POSTGRES_APP_PASSWORD:-transaction_app_dev}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      DB_POOL_MAX_SIZE: 5
+      DB_CONNECTION_TIMEOUT_MS: 3000
 
   notification-service:
     build:
@@ -210,6 +218,8 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      DB_POOL_MAX_SIZE: 5
+      DB_CONNECTION_TIMEOUT_MS: 3000
 
   api-gateway:
     build:

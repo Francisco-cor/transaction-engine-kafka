@@ -74,14 +74,24 @@ resilience4j:
         slidingWindowSize: 10
         failureRateThreshold: 50
         waitDurationInOpenState: 30s
+      fraud-outbox:
+        slidingWindowSize: 20
+        failureRateThreshold: 50
   bulkhead:
     instances:
       db:
-        maxConcurrentCalls: 20
+        maxConcurrentCalls: 10
+      fraud:
+        maxConcurrentCalls: 10
+      fraud-outbox:
+        maxConcurrentCalls: 5
   timelimiter:
     instances:
-      db:
-        timeoutDuration: 3s
+      db: { timeoutDuration: 3s }
+      fraud: { timeoutDuration: 3s }
+  retry:
+    instances:
+      db: { maxAttempts: 3, waitDuration: 500ms, enableExponentialBackoff: true, exponentialBackoffMultiplier: 2.0 }
 
 fraud:
   input-topic: ${FRAUD_INPUT_TOPIC:transactions.created.v1}

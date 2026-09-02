@@ -32,10 +32,14 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      transaction-id-prefix: ${KAFKA_TRANSACTION_ID_PREFIX:}
       properties:
         enable.idempotence: true
         acks: all
         compression.type: zstd
+        # F4 transactional outbox: when KAFKA_TRANSACTION_ID_PREFIX set, producer is transactional
+        # and OutboxPublisher uses KafkaTransactionManager for exactly-once (producer + DB markPublished in one Tx)
+        transactional.id: ${KAFKA_TRANSACTION_ID_PREFIX:}
 
 server:
   shutdown: graceful
@@ -52,7 +56,7 @@ management:
         enabled: true
       group:
         readiness:
-          include: readinessState,db,kafka
+          include: readinessState,db,kafka,outbox
   health:
     livenessstate:
       enabled: true
@@ -78,14 +82,27 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 30s
         permittedNumberOfCallsInHalfOpenState: 3
+      ledger-outbox:
+        slidingWindowSize: 20
+        failureRateThreshold: 50
+        waitDurationInOpenState: 15s
   bulkhead:
     instances:
+      # F4 per-topic isolation: ledger 10, fraud 10, outbox 5 — prevents hot-account from starving others
       db:
-        maxConcurrentCalls: 20
+        maxConcurrentCalls: 10
         maxWaitDuration: 100ms
+      ledger:
+        maxConcurrentCalls: 10
+        maxWaitDuration: 50ms
+      ledger-outbox:
+        maxConcurrentCalls: 5
+        maxWaitDuration: 50ms
   timelimiter:
     instances:
       db:
+        timeoutDuration: 3s
+      ledger:
         timeoutDuration: 3s
   retry:
     instances:
@@ -94,6 +111,10 @@ resilience4j:
         waitDuration: 500ms
         enableExponentialBackoff: true
         exponentialBackoffMultiplier: 2.0
+  # Queue shed: when bulkhead full, fail fast 503 with Retry-After
+  bulkhead-queue:
+    ledger:
+      maxQueueSize: 50
 
 ledger:
   security:
@@ -115,6 +136,7 @@ ledger:
     lease-seconds: ${LEDGER_OUTBOX_LEASE_SECONDS:30}
     base-backoff-seconds: ${LEDGER_OUTBOX_BASE_BACKOFF_SECONDS:1}
     max-backoff-seconds: ${LEDGER_OUTBOX_MAX_BACKOFF_SECONDS:60}
+    backlog-threshold: ${LEDGER_OUTBOX_BACKLOG_THRESHOLD:100}
 
 info:
   app:
