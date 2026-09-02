@@ -23,12 +23,26 @@
       "matchManagers": ["github-actions"],
       "pinDigests": true,
       "groupName": "github actions"
+    },
+    {
+      "matchManagers": ["helm-requirements", "helm-values"],
+      "pinDigests": true,
+      "groupName": "helm images"
     }
   ],
   "docker": {
     "pinDigests": true
   },
-  "enabledManagers": ["dockerfile", "docker-compose", "maven", "github-actions"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/infra/helm/umbrella/values.yaml/"],
+      "matchStrings": ["flyway:.*:.*@sha256:[a-f0-9]{64}"],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "flyway/flyway"
+    }
+  ],
+  "enabledManagers": ["dockerfile", "docker-compose", "maven", "github-actions", "helm-requirements", "helm-values"],
   "dependencyDashboard": true,
   "vulnerabilityAlerts": {
     "labels": ["security"]

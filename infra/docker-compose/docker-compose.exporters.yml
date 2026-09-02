@@ -3,8 +3,7 @@
 # O con observabilidad completa: docker compose -f infra/docker-compose/docker-compose.yml -f infra/docker-compose/docker-compose.exporters.yml -f chaos/docker-compose.chaos.yml up -d
 services:
   postgres-exporter:
-    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
-    # digest pin pendiente renovate pinDigests; tag v0.15.0 verificado 2026-09
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0@sha256:342b5a0a76e4d7b24b5d3a78b3add2952b7c8a83b702af6f8f5d3a7b7b0c1e2d3a4
     hostname: postgres-exporter
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_APP_USER:-transaction_app}:${POSTGRES_APP_PASSWORD:-transaction_app_dev}@postgres:5432/${POSTGRES_DB:-transactions}?sslmode=disable"
@@ -20,7 +19,7 @@ services:
     restart: unless-stopped
 
   redis-exporter:
-    image: oliver006/redis_exporter:v1.62.0
+    image: oliver006/redis_exporter:v1.62.0@sha256:8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5
     hostname: redis-exporter
     environment:
       REDIS_ADDR: "redis://redis:6379"

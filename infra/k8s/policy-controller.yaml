@@ -1,0 +1,46 @@
+# Sigstore policy-controller (F10) — verifies cosign signatures + SLSA provenance before admission
+# Install: helm repo add sigstore https://sigstore.github.io/helm-charts && helm upgrade --install policy-controller sigstore/policy-controller -n cosign-system --create-namespace -f infra/k8s/policy-controller-values.yaml
+# This file defines ClusterImagePolicy for transaction-engine images
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata:
+  name: transaction-engine-policy
+spec:
+  images:
+    - glob: "ghcr.io/example/transaction-service*"
+    - glob: "ghcr.io/example/ledger-service*"
+    - glob: "ghcr.io/example/fraud-service*"
+    - glob: "ghcr.io/example/reconciliation-service*"
+    - glob: "ghcr.io/example/notification-service*"
+    - glob: "ghcr.io/example/api-gateway*"
+  authorities:
+    - keyless:
+        url: https://fulcio.sigstore.dev
+        identities:
+          - issuer: https://token.actions.githubusercontent.com
+            subject: https://github.com/example/transaction-engine-kafka/.github/workflows/ci.yml@refs/heads/main
+          - issuer: https://token.actions.githubusercontent.com
+            subject: https://github.com/example/transaction-engine-kafka/.github/workflows/slsa.yml@refs/heads/main
+      ctlog:
+        url: https://rekor.sigstore.dev
+      attestations:
+        - name: sbom-spdx
+          predicateType: https://spdx.dev/Document
+        - name: slsa-provenance
+          predicateType: https://slsa.dev/provenance/v0.2
+  mode: warn
+  # mode: enforce # change to enforce after initial dry-run; warn logs violations without blocking
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: policy-controller-config
+  namespace: cosign-system
+data:
+  policy-controller: |
+    // Fallback rego: deny images without digest pin
+    package sigstore
+    deny[msg] {
+      not input.review.object.metadata.annotations["image-digest-pinned"]
+      msg := "image must be pinned by digest (renovate pinDigests)"
+    }
