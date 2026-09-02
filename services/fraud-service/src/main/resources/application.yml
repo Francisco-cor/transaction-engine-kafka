@@ -23,16 +23,21 @@ spring:
       group-id: ${FRAUD_CONSUMER_GROUP:fraud-service}
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: ${KAFKA_VALUE_DESERIALIZER:org.apache.kafka.common.serialization.StringDeserializer}
       properties:
         isolation.level: read_committed
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        specific.avro.reader: ${KAFKA_SPECIFIC_AVRO_READER:true}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: ${KAFKA_VALUE_SERIALIZER:org.apache.kafka.common.serialization.StringSerializer}
       properties:
         enable.idempotence: true
         acks: all
         compression.type: zstd
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        auto.register.schemas: false
+        use.latest.version: true
 
 server:
   shutdown: graceful

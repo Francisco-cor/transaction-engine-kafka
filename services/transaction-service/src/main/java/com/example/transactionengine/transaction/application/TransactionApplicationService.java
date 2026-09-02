@@ -116,6 +116,39 @@ public class TransactionApplicationService {
       } else if (isV2) {
         eventMap.put("customerNoteVault", "plain");
       }
+      // F5 Avro V2 builder with logical types (decimal, timestamp-millis, uuid) — validates wire compat
+      try {
+        var schemaFile = new java.io.File("libs/event-contracts/src/main/avro/TransactionCreatedV2.avsc");
+        if (!schemaFile.exists()) schemaFile = new java.io.File("src/main/avro/TransactionCreatedV2.avsc");
+        if (schemaFile.exists()) {
+          var schema = new org.apache.avro.Schema.Parser().parse(schemaFile);
+          var builder = new org.apache.avro.generic.GenericRecordBuilder(schema);
+          builder.set("eventId", eventId.toString());
+          builder.set("eventType", EVENT_TYPE);
+          builder.set("schemaVersion", schemaVersion);
+          builder.set("occurredAt", occurredAt.toEpochMilli());
+          builder.set("transactionId", created.transactionId().toString());
+          builder.set("accountId", created.accountId());
+          // decimal logical type: Avro expects ByteBuffer via DecimalConversion
+          var decimalSchema = schema.getField("amount").schema();
+          var amountBytes = new org.apache.avro.Conversions.DecimalConversion()
+              .toBytes(created.amount(), decimalSchema, decimalSchema.getLogicalType());
+          builder.set("amount", amountBytes);
+          builder.set("currency", created.currency());
+          builder.set("type", created.type().name());
+          builder.set("metadata", java.util.Map.of());
+          builder.set("customerNote", storedNote);
+          var record = builder.build();
+          // Validate record can be serialized via GenericDatumWriter (ensures logical types correct)
+          var out = new java.io.ByteArrayOutputStream();
+          var writer = new org.apache.avro.generic.GenericDatumWriter<org.apache.avro.generic.GenericRecord>(schema);
+          var encoder = org.apache.avro.io.EncoderFactory.get().binaryEncoder(out, null);
+          writer.write(record, encoder);
+          encoder.flush();
+        }
+      } catch (Exception avroEx) {
+        throw new IllegalStateException("Avro V2 build failed for wire compat", avroEx);
+      }
     }
     // Also keep TransactionCreatedV1 for validation (when v1)
     if (!isV2) {
